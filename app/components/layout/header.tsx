@@ -1,6 +1,9 @@
+"use client";
 import { Button } from "@/components/ui/button";
 
 import { MenuDrawer } from "./menu_drawer";
+import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 
 const MENU_ITEMS = [
   { label: "Trang chủ", href: "/" },
@@ -10,10 +13,11 @@ const MENU_ITEMS = [
 ];
 
 export const Header = () => {
+  const pathname = usePathname();
   return (
     <header className="w-full h-16 flex items-center justify-between px-4 bg-white shadow-sm">
       <div className="  flex items-center">
-        <MenuDrawer/>
+        <MenuDrawer />
         <img
           src="/logo.png"
           alt="logo"
@@ -27,7 +31,12 @@ export const Header = () => {
             <li key={item.label}>
               <a
                 href={item.href}
-                className="text-gray-700 font-semibold hover:text-blue-500 hover:underline transition-colors duration-200"
+                className={cn(
+                  "text-gray-700 font-semibold tracking-tight hover:text-sky-500 hover:scale-95 hover:rotate-1 transition-colors duration-200",
+                  pathname === item.href
+                    ? "text-sky-500 underline decoration-wavy underline-offset-4"
+                    : "",
+                )}
               >
                 {item.label}
               </a>
