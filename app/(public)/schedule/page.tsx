@@ -15,7 +15,8 @@ export default function Schedule() {
   ).toLocaleDateString();
   return (
     <main className="flex flex-col items-center  flex-1 text-center The class `bg-[radial-gradient(circle_at_2px_2px,_#bec7d1_1px,_transparent_0)]` can be written as bg-[radial-gradient(circle_at_2px_2px,#bec7d1_1px,transparent_0)] bg-size-[24px_24px]">
-      <div className="flex flex-col w-full bg-transparent justify-center my-10 gap-y-2">
+      <div className="p-4 lg:p-0">
+        <div className="flex flex-col w-full bg-transparent justify-center my-10 gap-y-2">
         <h1 className="text-3xl lg:text-5xl font-bold text-sky-600  uppercase">
           Lịch các lớp theo theo tuần
         </h1>
@@ -203,6 +204,7 @@ export default function Schedule() {
                 </div>
             </div>
         </div>
+      </div>
       </div>
     </main>
   );
