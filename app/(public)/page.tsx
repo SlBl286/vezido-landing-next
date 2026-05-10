@@ -1,5 +1,9 @@
+import { Metadata } from "next";
 import Image from "next/image";
-
+export const metadata: Metadata = {
+  title: "Vẽ zì đó - Trang chủ",
+  description: "Lớp học vẽ online và offline dành cho trẻ em",
+};
 export default function Home() {
   return (
     <main className="flex flex-col items-center  flex-1 text-center">

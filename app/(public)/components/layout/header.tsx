@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 import { MenuDrawer } from "./menu_drawer";
 import { cn } from "@/lib/utils";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const MENU_ITEMS = [
   { label: "Trang chủ", href: "/" },
@@ -14,6 +14,7 @@ const MENU_ITEMS = [
 
 export const Header = () => {
   const pathname = usePathname();
+  const router = useRouter();
   return (
     <header className="w-full h-16 flex items-center justify-between px-4 bg-white shadow-sm">
       <div className="  flex items-center">
@@ -45,7 +46,10 @@ export const Header = () => {
         </ul>
       </nav>
       <div>
-        <Button className="px-4 py-2 bg-blue-400 rounded-[255px_15px_225px_15px/15px_225px_15px_255px] hover:bg-blue-500 font-semibold shadow-md shadow-black/90">
+        <Button className="px-4 py-2 bg-blue-400 rounded-[255px_15px_225px_15px/15px_225px_15px_255px] hover:bg-blue-500 font-semibold shadow-md shadow-black/90"
+        onClick={()=>{
+          router.push("/enroll");
+        }}>
           Đăng ký học
         </Button>
       </div>

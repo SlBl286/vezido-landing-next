@@ -1,12 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+
 import {
   Baby,
   Calendar,
@@ -18,7 +11,11 @@ import {
   Workflow,
   WorkflowIcon,
 } from "lucide-react";
-
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Vẽ zì đó - Bảng giá",
+  description: "Bảng giá các lớp học vẽ online và offline",
+};
 export default function Pricing() {
   return (
     <main className="flex flex-col items-center py-10 min-h-screen bg-amber-50/50">

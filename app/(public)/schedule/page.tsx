@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Dot } from "lucide-react";
+import { Metadata } from "next";
 import Image from "next/image";
-
+export const metadata: Metadata = {
+  title: "Vẽ zì đó - Lịch lớp",
+  description: "Lịch các lớp học vẽ online và offline",
+};
 export default function Schedule() {
   const currentDate = new Date();
   const currentWeek = Math.ceil(
@@ -48,7 +52,7 @@ export default function Schedule() {
             </Button>
             <Button
               variant="outline"
-              className="px-4 py-2 rounded-[255px_15px_225px_15px/15px_225px_15px_255px] border-2 text-xl text-sky-500 border-sky-500"
+              className="px-4 py-2 rounded-[255px_15px_225px_15px/15px_225px_15px_255px] border-2 border-sky-500 text-xl text-sky-500 "
             >
               10-12 tuổi
             </Button>

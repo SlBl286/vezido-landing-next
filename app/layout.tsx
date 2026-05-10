@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Roboto, Roboto_Mono } from "next/font/google";
 import "./globals.css";
-import { Header } from "./components/layout/header";
-import { Footer } from "./components/layout/footer";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -15,7 +13,7 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vẽ gì đó",
+  title: "Vẽ zì đó",
   description: "Lớp học vẽ online và offline dành cho trẻ em",
 };
 
@@ -29,11 +27,8 @@ export default function RootLayout({
       lang="vi"
       className={`${roboto.variable} ${robotoMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-       
-        <Header />
+      <body className="min-h-full">
         {children}
-        <Footer />
       </body>
     </html>
   );
