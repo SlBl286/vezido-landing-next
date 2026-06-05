@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 };
 export default function Home() {
   return (
-    <main className="flex flex-col items-center  flex-1 text-center">
+    <main className="flex flex-col items-center  flex-1 text-center min-h-screen">
       <div className="flex w-full items-center justify-center bg-zinc-50 font-sans dark:bg-black">
      <Image
           className="dark:invert"
