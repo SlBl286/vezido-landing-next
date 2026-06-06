@@ -23,11 +23,13 @@ export const MenuDrawer = () => {
     const pathname = usePathname();
   return (
     <Sheet>
-      <SheetTrigger>
-        <Button variant="outline" className="mr-2 md:hidden" >
-          <Menu />
-        </Button>
-      </SheetTrigger>
+      <SheetTrigger
+        render={
+          <Button variant="outline" className="mr-2 md:hidden">
+            <Menu />
+          </Button>
+        }
+      />
       <SheetContent side="left">
         <SheetHeader>
             <SheetTitle className="w-full items-center justify-center flex">Menu</SheetTitle>

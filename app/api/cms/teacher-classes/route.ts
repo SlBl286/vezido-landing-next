@@ -27,7 +27,11 @@ export async function GET() {
 
     const classes = await prisma.class.findMany({
       where: {
-        teacherId: teacher.id,
+        teachers: {
+          some: {
+            id: teacher.id,
+          },
+        },
       },
       include: {
         _count: {

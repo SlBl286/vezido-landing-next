@@ -9,10 +9,10 @@ export type TeacherWithUserAndClasses = Omit<Teacher, "createdAt" | "updatedAt">
   classes: Pick<Class, "id" | "name" | "schedule">[];
 };
 
-export type ClassWithTeacherAndCount = Omit<Class, "createdAt" | "updatedAt"> & {
-  teacher: (Pick<Teacher, "id"> & {
+export type ClassWithTeachersAndCount = Omit<Class, "createdAt" | "updatedAt"> & {
+  teachers: (Pick<Teacher, "id"> & {
     user: Pick<User, "name">;
-  }) | null;
+  })[];
   specialties: Pick<Specialty, "id" | "name">[];
   _count: {
     students: number;
@@ -62,18 +62,40 @@ export interface TeacherUpdateInput {
   role?: string;
 }
 
+export interface ClassScheduleInput {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  startDate?: string;
+  weeksCount?: string | number;
+  frequency?: "weekly" | "biweekly";
+}
+
 export interface ClassCreateInput {
   name: string;
   schedule?: string;
   room?: string;
   specialtyIds?: string[];
   teacherId?: string;
+  teacherIds?: string[];
   dayOfWeek?: number;
   startTime?: string;
   endTime?: string;
   autoSchedule?: boolean;
   startDate?: string;
   weeksCount?: string;
+  schedules?: ClassScheduleInput[];
+}
+
+export interface AttendanceRecord {
+  studentClassId: string;
+  status: string; // PRESENT, ABSENT, LATE
+  notes?: string | null;
+}
+
+export interface AttendanceSaveInput {
+  sessionId: string;
+  records: AttendanceRecord[];
 }
 
 export interface StudentEnrollInput {
@@ -82,6 +104,7 @@ export interface StudentEnrollInput {
   parentName: string;
   parentPhone: string;
   classId: string;
+  studentCode?: string;
 }
 
 export interface ProfileUpdateInput {
@@ -107,11 +130,11 @@ export interface TeachersPostResponse {
 }
 
 export interface ClassesGetResponse {
-  classes: ClassWithTeacherAndCount[];
+  classes: ClassWithTeachersAndCount[];
 }
 
 export interface ClassesPostResponse {
-  class: ClassWithTeacherAndCount;
+  class: ClassWithTeachersAndCount;
 }
 
 export interface StudentsGetResponse {

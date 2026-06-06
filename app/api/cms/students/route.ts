@@ -31,10 +31,15 @@ export async function GET(req: Request) {
 
       const classRecord = await prisma.class.findUnique({
         where: { id: classId },
-        select: { teacherId: true },
+        select: {
+          teachers: {
+            select: { id: true }
+          }
+        },
       });
 
-      if (!classRecord || classRecord.teacherId !== teacherProfile.id) {
+      const isTeacherAssigned = classRecord?.teachers.some(t => t.id === teacherProfile.id);
+      if (!classRecord || !isTeacherAssigned) {
         return NextResponse.json({ error: "Forbidden - You do not teach this class" }, { status: 403 });
       }
     } else if (role !== "ADMIN") {
@@ -64,7 +69,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { studentName, studentAge, parentName, parentPhone, classId } = body;
+    const { studentName, studentAge, parentName, parentPhone, classId, studentCode } = body;
 
     if (!studentName || !studentAge || !parentName || !parentPhone || !classId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -82,14 +87,58 @@ export async function POST(req: Request) {
 
       const classRecord = await prisma.class.findUnique({
         where: { id: classId },
-        select: { teacherId: true },
+        select: {
+          teachers: {
+            select: { id: true }
+          }
+        },
       });
 
-      if (!classRecord || classRecord.teacherId !== teacherProfile.id) {
+      const isTeacherAssigned = classRecord?.teachers.some(t => t.id === teacherProfile.id);
+      if (!classRecord || !isTeacherAssigned) {
         return NextResponse.json({ error: "Forbidden - You do not teach this class" }, { status: 403 });
       }
     } else if (role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    let finalStudentCode = studentCode?.trim();
+
+    if (!finalStudentCode) {
+      // 1. Search if this student already has an enrollment in another class (same name and parent phone)
+      const existingStudent = await prisma.studentClass.findFirst({
+        where: {
+          studentName,
+          parentPhone,
+          studentCode: { not: "" },
+          NOT: { studentCode: null }
+        },
+        select: {
+          studentCode: true
+        }
+      });
+
+      if (existingStudent && existingStudent.studentCode) {
+        finalStudentCode = existingStudent.studentCode;
+      } else {
+        // 2. Generate a new unique code HS-XXXX (4 random digits)
+        let isUnique = false;
+        let generatedCode = "";
+        const digits = "0123456789";
+
+        while (!isUnique) {
+          const randDigits = Array.from({ length: 4 }, () => digits[Math.floor(Math.random() * 10)]).join("");
+          generatedCode = `HS-${randDigits}`;
+          
+          const conflict = await prisma.studentClass.findFirst({
+            where: { studentCode: generatedCode }
+          });
+          if (!conflict) {
+            isUnique = true;
+          }
+        }
+        finalStudentCode = generatedCode;
+      }
     }
 
     const student = await prisma.studentClass.create({
@@ -99,6 +148,7 @@ export async function POST(req: Request) {
         parentName,
         parentPhone,
         classId,
+        studentCode: finalStudentCode,
       },
     });
 
@@ -131,7 +181,9 @@ export async function DELETE(req: Request) {
       include: {
         class: {
           select: {
-            teacherId: true,
+            teachers: {
+              select: { id: true }
+            }
           },
         },
       },
@@ -147,7 +199,8 @@ export async function DELETE(req: Request) {
         where: { userId },
       });
 
-      if (!teacherProfile || student.class.teacherId !== teacherProfile.id) {
+      const isTeacherAssigned = student.class.teachers.some(t => t.id === teacherProfile?.id);
+      if (!teacherProfile || !isTeacherAssigned) {
         return NextResponse.json({ error: "Forbidden - You do not teach this class" }, { status: 403 });
       }
     } else if (role !== "ADMIN") {

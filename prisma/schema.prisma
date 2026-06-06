@@ -88,7 +88,7 @@ model Teacher {
   phone       String?
   bio         String?
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classes     Class[]
+  classes     Class[]     @relation("ClassTeachers")
   specialties Specialty[]
   sessions    ClassSession[]
 }
@@ -98,8 +98,7 @@ model Class {
   name        String         // Tên lớp học
   schedule    String?        // Lịch học (tùy chọn, có thể tự động lấy từ buổi học)
   room        String?        // Phòng học hoặc link online
-  teacherId   String?
-  teacher     Teacher?       @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  teachers    Teacher[]      @relation("ClassTeachers")
   students    StudentClass[]
   specialties Specialty[]
   sessions    ClassSession[]
@@ -109,12 +108,14 @@ model Class {
 
 model StudentClass {
   id          String   @id @default(cuid())
+  studentCode String?  // Mã học sinh để theo dõi nhiều khóa
   studentName String
   studentAge  Int
   parentName  String
   parentPhone String
   classId     String
   class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attendance  Attendance[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -132,6 +133,58 @@ model ClassSession {
   isMakeup    Boolean  @default(false) // Học bù
   description String?  // Ghi chú (ví dụ: Lý do học bù, nội dung học...)
   status      String   @default("SCHEDULED") // SCHEDULED, CANCELLED, COMPLETED
+  attendance  Attendance[]
+  artworks    StudentArtwork[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Attendance {
+  id             String       @id @default(cuid())
+  sessionId      String
+  session        ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentClassId String
+  studentClass   StudentClass @relation(fields: [studentClassId], references: [id], onDelete: Cascade)
+  status         String       // PRESENT, ABSENT, LATE
+  notes          String?      // Ghi chú chi tiết (ví dụ: nghỉ có phép, đi muộn 15p...)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([sessionId, studentClassId])
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String   @db.Text
+  category  String   @default("Chung")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StudentArtwork {
+  id           String        @id @default(cuid())
+  studentCode  String        // Mã học sinh để liên kết
+  imageUrl     String        // Link tranh vẽ đã tải lên
+  title        String?       // Tên tác phẩm
+  comment      String?       @db.Text // Nhận xét của giáo viên
+  teacherName  String?       // Tên giáo viên nhận xét
+  className    String?       // Tên lớp học khi vẽ tranh
+  sessionId    String?       // Liên kết với buổi học cụ thể
+  session      ClassSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  date         DateTime      @default(now()) // Ngày vẽ tranh
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String                        // Họ tên phụ huynh
+  phone     String                        // Số điện thoại liên hệ
+  email     String?                       // Email (tùy chọn)
+  message   String   @db.Text            // Nội dung tin nhắn
+  status    String   @default("NEW")     // NEW, CONTACTED, CLOSED
+  note      String?  @db.Text            // Ghi chú nội bộ của admin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

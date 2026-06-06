@@ -6,6 +6,7 @@ import { cmsApi } from "@/lib/api-client";
 import { TeacherWithUserAndClasses, AuthSession } from "@/lib/types/api";
 import { Specialty } from "@/lib/generated/prisma/client";
 import { Plus, Trash2, Mail, Phone, X, Loader2 } from "lucide-react";
+import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
 
 function TeacherStatsCell({ teacherId }: { teacherId: string }) {
   const [stats, setStats] = useState<any>(null);
@@ -59,6 +60,38 @@ export default function TeachersPage() {
   const [showEditTeacherModal, setShowEditTeacherModal] = useState(false);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Notification State
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "success" | "error" | "info" | "confirm";
+    onCloseCallback?: () => void;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const showNotification = (
+    title: string,
+    message: string,
+    type: "success" | "error" | "info" | "confirm",
+    onCloseCallback?: () => void,
+    onConfirm?: () => void
+  ) => {
+    setNotification({
+      isOpen: true,
+      title,
+      message,
+      type,
+      onCloseCallback,
+      onConfirm
+    });
+  };
 
   // Add Teacher Form
   const [teacherForm, setTeacherForm] = useState({
@@ -245,16 +278,20 @@ export default function TeachersPage() {
 
   // Delete Teacher Handler
   const handleDeleteTeacher = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa giáo viên "${name}"? Thao tác này cũng sẽ xóa tài khoản đăng nhập của giáo viên.`)) {
-      return;
-    }
-
-    try {
-      await cmsApi.teachers.delete(id);
-      fetchAllData();
-    } catch (err: any) {
-      alert(err.message || "Không thể xóa giáo viên");
-    }
+    showNotification(
+      "Xác nhận xóa giáo viên",
+      `Bạn có chắc chắn muốn xóa giáo viên "${name}"? Thao tác này cũng sẽ xóa tài khoản đăng nhập của giáo viên.`,
+      "confirm",
+      undefined,
+      async () => {
+        try {
+          await cmsApi.teachers.delete(id);
+          fetchAllData();
+        } catch (err: any) {
+          showNotification("Lỗi xóa giáo viên", err.message || "Không thể xóa giáo viên", "error");
+        }
+      }
+    );
   };
 
   if (loadingSession) {
@@ -777,6 +814,17 @@ export default function TeachersPage() {
         </div>
       )}
 
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={() => {
+          setNotification(prev => ({ ...prev, isOpen: false }));
+          if (notification.onCloseCallback) notification.onCloseCallback();
+        }}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        onConfirm={notification.onConfirm}
+      />
     </div>
   );
 }

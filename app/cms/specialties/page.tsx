@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { cmsApi } from "@/lib/api-client";
 import { AuthSession } from "@/lib/types/api";
 import { Plus, Trash2, BookOpen, Users, X, Loader2, Award } from "lucide-react";
+import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
 
 interface SpecialtyWithCounts {
   id: string;
@@ -27,6 +28,38 @@ export default function SpecialtiesPage() {
   const [formError, setFormError] = useState("");
   const [specialtyName, setSpecialtyName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Notification State
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "success" | "error" | "info" | "confirm";
+    onCloseCallback?: () => void;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const showNotification = (
+    title: string,
+    message: string,
+    type: "success" | "error" | "info" | "confirm",
+    onCloseCallback?: () => void,
+    onConfirm?: () => void
+  ) => {
+    setNotification({
+      isOpen: true,
+      title,
+      message,
+      type,
+      onCloseCallback,
+      onConfirm
+    });
+  };
 
   // Fetch session on load
   useEffect(() => {
@@ -93,16 +126,20 @@ export default function SpecialtiesPage() {
       confirmMsg += `\n⚠️ CẢNH BÁO: Chuyên môn này đang được gán cho ${teachersCount} giáo viên và ${classesCount} lớp học. Khi xóa, liên kết chuyên môn của các giáo viên và lớp này sẽ bị gỡ bỏ!`;
     }
 
-    if (!confirm(confirmMsg)) {
-      return;
-    }
-
-    try {
-      await cmsApi.specialties.delete(id);
-      fetchSpecialties();
-    } catch (err: any) {
-      alert(err.message || "Không thể xóa chuyên môn");
-    }
+    showNotification(
+      "Xác nhận xóa chuyên môn",
+      confirmMsg,
+      "confirm",
+      undefined,
+      async () => {
+        try {
+          await cmsApi.specialties.delete(id);
+          fetchSpecialties();
+        } catch (err: any) {
+          showNotification("Lỗi xóa chuyên môn", err.message || "Không thể xóa chuyên môn", "error");
+        }
+      }
+    );
   };
 
   if (loadingSession) {
@@ -261,6 +298,17 @@ export default function SpecialtiesPage() {
         </div>
       )}
 
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={() => {
+          setNotification(prev => ({ ...prev, isOpen: false }));
+          if (notification.onCloseCallback) notification.onCloseCallback();
+        }}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        onConfirm={notification.onConfirm}
+      />
     </div>
   );
 }

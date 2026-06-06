@@ -17,6 +17,7 @@ interface CustomSelectProps {
 
 export const CustomSelect = ({ value, onChange, options, placeholder = "Chọn...", className }: CustomSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((opt) => opt.value === value);
@@ -31,6 +32,16 @@ export const CustomSelect = ({ value, onChange, options, placeholder = "Chọn..
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery("");
+    }
+  }, [isOpen]);
+
+  const filteredOptions = options.filter(opt =>
+    opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div ref={containerRef} className={cn("relative w-full", className)}>
       <button
@@ -43,27 +54,42 @@ export const CustomSelect = ({ value, onChange, options, placeholder = "Chọn..
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white border-3 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-100">
-          {options.length === 0 ? (
-            <div className="p-3 text-sm text-gray-400 font-bold text-center">Không có tùy chọn nào</div>
-          ) : (
-            options.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "w-full text-left p-3 font-bold text-sm hover:bg-[#fff9ed] transition-colors cursor-pointer text-gray-900 border-b border-gray-100 last:border-b-0",
-                  opt.value === value && "bg-[#bae1ff] hover:bg-[#bae1ff]"
-                )}
-              >
-                {opt.label}
-              </button>
-            ))
-          )}
+        <div className="absolute z-50 w-full mt-2 bg-white border-3 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-60 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+          {/* Search Box */}
+          <div className="p-2 border-b-2 border-black bg-gray-50 shrink-0">
+            <input
+              type="text"
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm kiếm..."
+              className="w-full border-2 border-black rounded-lg p-1.5 bg-white text-xs font-bold focus:outline-none"
+            />
+          </div>
+
+          {/* Options list */}
+          <div className="overflow-y-auto flex-1">
+            {filteredOptions.length === 0 ? (
+              <div className="p-3 text-sm text-gray-400 font-bold text-center">Không tìm thấy kết quả</div>
+            ) : (
+              filteredOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={cn(
+                    "w-full text-left p-3 font-bold text-sm hover:bg-[#fff9ed] transition-colors cursor-pointer text-gray-900 border-b border-gray-100 last:border-b-0",
+                    opt.value === value && "bg-[#bae1ff] hover:bg-[#bae1ff]"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>

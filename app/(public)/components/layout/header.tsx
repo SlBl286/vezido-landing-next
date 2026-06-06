@@ -1,57 +1,65 @@
 "use client";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-
 import { MenuDrawer } from "./menu_drawer";
 import { cn } from "@/lib/utils";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const MENU_ITEMS = [
   { label: "Trang chủ", href: "/" },
   { label: "Lịch học", href: "/schedule" },
   { label: "Bảng giá", href: "/pricing" },
+  { label: "Kết quả học tập", href: "/portfolio" },
   { label: "Liên hệ", href: "/contact" },
 ];
 
 export const Header = () => {
   const pathname = usePathname();
-  const router = useRouter();
+
   return (
-    <header className="w-full h-16 flex items-center justify-between px-4 bg-white shadow-sm">
-      <div className="  flex items-center">
+    <header className="w-full h-16 flex items-center justify-between px-4 md:px-8 bg-white border-b-4 border-black shadow-[0_4px_0px_rgba(0,0,0,1)] sticky top-0 z-50">
+      {/* Left: Hamburger + Logo */}
+      <div className="flex items-center gap-2">
         <MenuDrawer />
-        <img
-          src="/logo.png"
-          alt="logo"
-          width={80}
-          className="dark:invert object-contain"
-        />
-      </div>{" "}
+        <Link href="/" className="flex items-center gap-2">
+          <img
+            src="/logo.png"
+            alt="Vẽ zì đó"
+            width={80}
+            className="object-contain h-10 w-auto"
+          />
+        </Link>
+      </div>
+
+      {/* Center: Nav Links (desktop) */}
       <nav className="hidden md:flex">
-        <ul className="flex space-x-4">
+        <ul className="flex gap-1">
           {MENU_ITEMS.map((item) => (
             <li key={item.label}>
-              <a
+              <Link
                 href={item.href}
                 className={cn(
-                  "text-gray-700 font-semibold tracking-tight hover:text-sky-500 hover:scale-95 hover:rotate-1 transition-colors duration-200",
+                  "px-3 py-1.5 rounded-lg text-sm font-black transition-all duration-150 hover:bg-gray-100",
                   pathname === item.href
-                    ? "text-sky-500 underline decoration-wavy underline-offset-4"
-                    : "",
+                    ? "text-sky-600 underline decoration-wavy underline-offset-4 bg-sky-50"
+                    : "text-gray-700 hover:text-sky-500"
                 )}
               >
                 {item.label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
       </nav>
+
+      {/* Right: CTA */}
       <div>
-        <Button className="px-4 py-2 bg-blue-400 rounded-[255px_15px_225px_15px/15px_225px_15px_255px] hover:bg-blue-500 font-semibold shadow-md shadow-black/90"
-        onClick={()=>{
-          router.push("/enroll");
-        }}>
-          Đăng ký học
-        </Button>
+        <Link
+          href="/enroll"
+          className="px-4 py-2 bg-amber-300 hover:bg-amber-400 border-2 border-black rounded-xl text-sm font-black shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all text-black hidden sm:inline-flex items-center gap-1.5"
+        >
+          ✏️ Đăng ký học
+        </Link>
       </div>
     </header>
   );

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { checkSessionsConflictBatch } from "@/lib/conflict-checker";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -94,14 +95,21 @@ export async function POST(req: Request) {
     // Fetch the target class to obtain default teacher/room if not provided
     const targetClass = await prisma.class.findUnique({
       where: { id: classId },
-      select: { teacherId: true, room: true },
+      select: {
+        room: true,
+        teachers: {
+          select: { id: true }
+        }
+      },
     });
 
     if (!targetClass) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    const defaultTeacherId = targetClass.teacherId;
+    const defaultTeacherId = targetClass.teachers && targetClass.teachers.length > 0
+      ? targetClass.teachers[0].id
+      : null;
     const defaultRoom = targetClass.room;
 
     if (isRecurring) {
@@ -142,6 +150,12 @@ export async function POST(req: Request) {
         );
       }
 
+      // Check conflicts for recurring sessions
+      const conflictResult = await checkSessionsConflictBatch(sessionsToCreate);
+      if (conflictResult.conflict) {
+        return NextResponse.json({ error: conflictResult.message }, { status: 400 });
+      }
+
       await prisma.classSession.createMany({
         data: sessionsToCreate,
       });
@@ -155,14 +169,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Date is required for a single session" }, { status: 400 });
       }
 
+      const sessionToCreate = {
+        classId,
+        teacherId: teacherId || defaultTeacherId || null,
+        date: new Date(date),
+        startTime,
+        endTime,
+        room: room !== undefined ? room : (defaultRoom || null),
+      };
+
+      // Check conflicts for single session
+      const conflictResult = await checkSessionsConflictBatch([sessionToCreate]);
+      if (conflictResult.conflict) {
+        return NextResponse.json({ error: conflictResult.message }, { status: 400 });
+      }
+
       const newSession = await prisma.classSession.create({
         data: {
-          classId,
-          teacherId: teacherId || defaultTeacherId || null,
-          date: new Date(date),
-          startTime,
-          endTime,
-          room: room !== undefined ? room : (defaultRoom || null),
+          ...sessionToCreate,
           isMakeup: isMakeup || false,
           description: description || null,
           status: "SCHEDULED",
@@ -202,8 +226,13 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   const session = await auth();
-  if (!session || !session.user || (session.user as any).role !== "ADMIN") {
+  if (!session || !session.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const role = (session.user as any).role;
+  if (role !== "ADMIN" && role !== "TEACHER") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
@@ -212,6 +241,32 @@ export async function PUT(req: Request) {
 
     if (!id) {
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
+    }
+
+    // Fetch existing session first to merge parameters for conflict checking
+    const existingSession = await prisma.classSession.findUnique({
+      where: { id },
+    });
+
+    if (!existingSession) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    // Prepare details of the proposed session update
+    const proposedSession = {
+      date: date ? new Date(date) : existingSession.date,
+      startTime: startTime !== undefined ? startTime : existingSession.startTime,
+      endTime: endTime !== undefined ? endTime : existingSession.endTime,
+      teacherId: teacherId !== undefined ? teacherId : existingSession.teacherId,
+      room: room !== undefined ? room : existingSession.room,
+      classId: existingSession.classId,
+      excludeSessionId: id,
+    };
+
+    // Run conflict check
+    const conflictResult = await checkSessionsConflictBatch([proposedSession]);
+    if (conflictResult.conflict) {
+      return NextResponse.json({ error: conflictResult.message }, { status: 400 });
     }
 
     const updatedSession = await prisma.classSession.update({

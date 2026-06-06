@@ -3,7 +3,8 @@ import {
   ClassesGetResponse, ClassesPostResponse, ClassCreateInput,
   StudentsGetResponse, StudentsPostResponse, StudentEnrollInput,
   AuthSession, ProfileUpdateInput,
-  SessionCreateInput, SessionUpdateInput, SessionsGetResponse, ClassSessionWithRelations
+  SessionCreateInput, SessionUpdateInput, SessionsGetResponse, ClassSessionWithRelations,
+  AttendanceSaveInput
 } from "./types/api";
 import { Specialty } from "./generated/prisma/client";
 
@@ -65,6 +66,12 @@ export const cmsApi = {
       body: JSON.stringify(data),
     }),
     
+    update: (id: string, data: { name: string; schedule?: string; room?: string | null; teacherIds?: string[]; specialtyIds?: string[] }) => fetchJson<ClassesPostResponse>(`/api/cms/classes?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    
     delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/classes?id=${id}`, {
       method: "DELETE",
     }),
@@ -91,6 +98,49 @@ export const cmsApi = {
     }),
     delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/sessions?id=${id}`, {
       method: "DELETE",
+    }),
+    getDetail: (id: string) => fetchJson<{
+      session: {
+        id: string;
+        date: string;
+        startTime: string;
+        endTime: string;
+        room: string;
+        status: string;
+        description: string;
+        className: string;
+        teacherId: string;
+        teacherName: string;
+      };
+      students: {
+        id: string;
+        studentName: string;
+        studentAge: number;
+        studentCode: string;
+        parentName: string;
+        parentPhone: string;
+        attendance: {
+          status: string;
+          notes: string;
+        } | null;
+        artwork: {
+          id: string;
+          title: string;
+          comment: string;
+          imageUrl: string;
+        } | null;
+      }[];
+      teachersPool: { id: string; name: string }[];
+    }>(`/api/cms/sessions/${id}`),
+    saveDetail: (id: string, data: {
+      teacherId?: string | null;
+      room?: string | null;
+      attendance?: { studentClassId: string; status: string; notes?: string }[];
+      artworks?: { studentCode: string; imageUrl?: string; title?: string; comment?: string; isDeleted?: boolean }[];
+    }) => fetchJson<{ message: string }>(`/api/cms/sessions/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     }),
   },
   
@@ -120,6 +170,24 @@ export const cmsApi = {
     }),
   },
 
+  attendance: {
+    get: (sessionId: string) => fetchJson<{
+      attendance: {
+        studentClassId: string;
+        studentName: string;
+        studentAge: number;
+        status: string | null;
+        notes: string | null;
+      }[]
+    }>(`/api/cms/attendance?sessionId=${sessionId}`),
+    
+    save: (data: AttendanceSaveInput) => fetchJson<{ message: string }>("/api/cms/attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+  },
+
   profile: {
     get: () => fetchJson<{ user: any }>("/api/cms/profile"),
     update: (data: ProfileUpdateInput) => fetchJson<{ message: string, user: any }>("/api/cms/profile", {
@@ -127,5 +195,43 @@ export const cmsApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     })
+  },
+
+  faqs: {
+    list: (search?: string) => fetchJson<{ faqs: any[] }>(`/api/cms/faqs${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+    create: (data: { question: string; answer: string; category?: string }) => fetchJson<{ faq: any }>("/api/cms/faqs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: { question: string; answer: string; category?: string }) => fetchJson<{ faq: any }>(`/api/cms/faqs?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/faqs?id=${id}`, {
+      method: "DELETE",
+    }),
+  },
+
+  artworks: {
+    list: (params: { studentCode?: string } = {}) => {
+      const query = new URLSearchParams();
+      if (params.studentCode) query.append("studentCode", params.studentCode);
+      return fetchJson<{ artworks: any[] }>(`/api/cms/artworks?${query.toString()}`);
+    },
+    create: (data: { studentCode: string; imageUrl: string; title?: string; comment?: string; teacherName?: string; className?: string }) => fetchJson<{ artwork: any }>("/api/cms/artworks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: { title?: string; comment?: string }) => fetchJson<{ artwork: any }>(`/api/cms/artworks?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/artworks?id=${id}`, {
+      method: "DELETE",
+    }),
   },
 };
