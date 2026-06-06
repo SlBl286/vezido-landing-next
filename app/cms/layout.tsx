@@ -23,7 +23,7 @@ export default async function CMSLayout({
             <span className="text-6xl mb-4 block">🔒</span>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Đăng nhập yêu cầu</h1>
             <p className="text-gray-600 mb-6">Bạn cần đăng nhập với tài khoản quản trị viên hoặc giáo viên để truy cập trang này.</p>
-            <a href="/login" className="inline-block bg-[#ffd275] border-3 border-black rounded-xl px-6 py-3 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#ffc342] transition-colors">
+            <a href="/sign-in" className="inline-block bg-[#ffd275] border-3 border-black rounded-xl px-6 py-3 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#ffc342] transition-colors">
               Đi đến Trang Đăng Nhập
             </a>
           </div>
