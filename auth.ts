@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials";
 import argon2 from "argon2";
 import { User } from "./lib/generated/prisma/client";
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   adapter: PrismaAdapter(prisma),
   providers: [
     Google({
