@@ -24,9 +24,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
       },
       authorize: async (credentials) => {
-        // Implement your own logic to verify the credentials
+        const username = credentials?.username as string;
+        const password = credentials?.password as string;
+
+        if (!username || !password) {
+          return null;
+        }
+
+        // Auto-create superadmin with Admin123@ if it does not exist
+        if (username === "superadmin") {
+          const existingAdmin = await prisma.user.findUnique({
+            where: { username: "superadmin" },
+          });
+
+          if (!existingAdmin) {
+            const hashedPassword = await argon2.hash("Admin123@");
+            await prisma.user.create({
+              data: {
+                username: "superadmin",
+                name: "Super Admin",
+                hashedPassword,
+                role: "ADMIN",
+              },
+            });
+            console.log("[Auth] Auto-created superadmin account.");
+          }
+        }
+
         const user = await prisma.user.findUnique({
-          where: { username: credentials?.username as string },
+          where: { username },
         });
 
         if (!user || !user.hashedPassword) {
@@ -35,7 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const valid = await argon2.verify(
           user.hashedPassword,
-          credentials?.password as string ,
+          password,
         );
         if (!valid) {
           return null;
