@@ -5,8 +5,10 @@ import { auth } from "@/auth"
 
 export const proxy: NextProxy = async (req) => {
   const session = await auth()
+  
+  console.log(`[Proxy Log] Path: ${req.nextUrl.pathname} | Session:`, JSON.stringify(session))
 
-  const isLoggedIn = !!session
+  const isLoggedIn = !!session?.user
 
   // Redirect to CMS if logged-in user tries to access sign-in page
   if (req.nextUrl.pathname === "/sign-in" && isLoggedIn) {
