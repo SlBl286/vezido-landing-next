@@ -18,7 +18,7 @@ export default function SignInPage() {
   useEffect(() => {
     async function checkSession() {
       try {
-        const res = await fetch("/api/auth/session");
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           if (data && data.user) {
