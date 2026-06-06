@@ -188,3 +188,30 @@ model ContactSubmission {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model SupplyItem {
+  id           String              @id @default(cuid())
+  name         String              @unique // Tên họa cụ / đồ dùng
+  category     String              // Họa cụ, Văn phòng phẩm, Dọn dẹp, Thiết bị...
+  quantity     Int                 @default(0) // Số lượng hiện tại trong kho
+  minQuantity  Int                 @default(5) // Ngưỡng cảnh báo sắp hết
+  unit         String              // Đơn vị tính: Cái, Hộp, Chai, Tờ...
+  transactions SupplyTransaction[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model SupplyTransaction {
+  id           String     @id @default(cuid())
+  itemId       String
+  item         SupplyItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type         String     // "IMPORT" (Nhập kho) hoặc "EXPORT" (Xuất dùng/Báo hết)
+  quantity     Int        // Số lượng nhập/xuất
+  pricePerUnit Float?     // Đơn giá nhập (chỉ có khi IMPORT)
+  totalCost    Float?     // Tổng chi phí = quantity * pricePerUnit (chỉ có khi IMPORT)
+  purpose      String?    // Lý do xuất dùng hoặc ghi chú nhập kho
+  performedBy  String?    // Người thực hiện (tên giáo viên/admin)
+  date         DateTime   @default(now())
+  createdAt    DateTime   @default(now())
+}
+
