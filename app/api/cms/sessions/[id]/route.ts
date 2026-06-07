@@ -85,6 +85,37 @@ export async function GET(
       };
     });
 
+    // Fetch all session tasks that are general or assigned to the session's teacher
+    const sessionTeacherId = classSession.teacherId;
+    const sessionTasks = await prisma.task.findMany({
+      where: {
+        frequency: { in: ["SESSION_START", "SESSION_END"] },
+        OR: [
+          { assignedTeacherId: null },
+          ...(sessionTeacherId ? [{ assignedTeacherId: sessionTeacherId }] : [])
+        ]
+      },
+      include: {
+        completions: {
+          where: {
+            sessionId: id
+          }
+        }
+      }
+    });
+
+    const tasksData = sessionTasks.map(task => {
+      const completion = task.completions[0];
+      return {
+        id: task.id,
+        title: task.title,
+        description: task.description || "",
+        frequency: task.frequency,
+        isCompleted: !!completion,
+        notes: completion?.notes || ""
+      };
+    });
+
     return NextResponse.json({
       session: {
         id: classSession.id,
@@ -99,7 +130,8 @@ export async function GET(
         teacherName: classSession.teacher?.user.name || "Chưa phân công"
       },
       students: studentsData,
-      teachersPool
+      teachersPool,
+      sessionTasks: tasksData
     });
   } catch (error) {
     console.error("Error fetching session details:", error);
@@ -135,7 +167,7 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { teacherId, room, attendance, artworks } = body;
+    const { teacherId, room, attendance, artworks, taskCompletions } = body;
 
     // 1. Update session metadata if provided
     await prisma.classSession.update({
@@ -221,6 +253,48 @@ export async function POST(
               className: classSession.class.name
             }
           });
+        }
+      }
+    }
+
+    // 3.5 Save session-specific task completions
+    if (taskCompletions && Array.isArray(taskCompletions)) {
+      const teacherProfile = await prisma.teacher.findUnique({
+        where: { userId: session.user.id }
+      });
+      const currentTeacherId = teacherProfile?.id || classSession.teacherId;
+
+      if (currentTeacherId) {
+        for (const tc of taskCompletions) {
+          if (tc.isCompleted) {
+            await prisma.taskCompletion.upsert({
+              where: {
+                taskId_sessionId_teacherId: {
+                  taskId: tc.taskId,
+                  sessionId: id,
+                  teacherId: currentTeacherId
+                }
+              },
+              update: {
+                notes: tc.notes || ""
+              },
+              create: {
+                taskId: tc.taskId,
+                sessionId: id,
+                teacherId: currentTeacherId,
+                notes: tc.notes || "",
+                status: "COMPLETED"
+              }
+            });
+          } else {
+            await prisma.taskCompletion.deleteMany({
+              where: {
+                taskId: tc.taskId,
+                sessionId: id,
+                teacherId: currentTeacherId
+              }
+            });
+          }
         }
       }
     }

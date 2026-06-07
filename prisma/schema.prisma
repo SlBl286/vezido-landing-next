@@ -91,6 +91,8 @@ model Teacher {
   classes     Class[]     @relation("ClassTeachers")
   specialties Specialty[]
   sessions    ClassSession[]
+  tasks           Task[]
+  taskCompletions TaskCompletion[]
 }
 
 model Class {
@@ -135,6 +137,7 @@ model ClassSession {
   status      String   @default("SCHEDULED") // SCHEDULED, CANCELLED, COMPLETED
   attendance  Attendance[]
   artworks    StudentArtwork[]
+  taskCompletions TaskCompletion[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -214,4 +217,34 @@ model SupplyTransaction {
   date         DateTime   @default(now())
   createdAt    DateTime   @default(now())
 }
+
+model Task {
+  id                String           @id @default(cuid())
+  title             String           // Tên công việc
+  description       String?          @db.Text // Mô tả chi tiết
+  frequency         String           // SESSION_START, SESSION_END, WEEKLY, MONTHLY, ONCE
+  assignedTeacherId String?          // Phân công cụ thể cho giáo viên nào (Null = tất cả)
+  assignedTeacher   Teacher?         @relation(fields: [assignedTeacherId], references: [id], onDelete: Cascade)
+  completions       TaskCompletion[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model TaskCompletion {
+  id          String        @id @default(cuid())
+  taskId      String
+  task        Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  sessionId   String?       // Liên kết với buổi học cụ thể (cho SESSION_START / SESSION_END)
+  session     ClassSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  completedAt DateTime      @default(now())
+  notes       String?       @db.Text // Ghi chú của giáo viên khi thực hiện
+  status      String        @default("COMPLETED") // COMPLETED, SKIPPED
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([taskId, sessionId, teacherId])
+}
+
 

@@ -37,7 +37,8 @@ export const Sidebar = ({ role }: SidebarProps) => {
       icon: "🏠",
       items: [
         { id: "overview", href: "/cms", label: "Tổng quan", icon: "📊", color: "bg-[#bae1ff]" },
-        { id: "profile", href: "/cms/profile", label: "Hồ sơ cá nhân", icon: "⚙️", color: "bg-[#dcd6f7]" }
+        { id: "profile", href: "/cms/profile", label: "Hồ sơ cá nhân", icon: "⚙️", color: "bg-[#dcd6f7]" },
+        { id: "tasks", href: "/cms/tasks", label: "Nhiệm vụ & Công việc", icon: "📋", color: "bg-[#a8e6cf]" }
       ]
     },
     {

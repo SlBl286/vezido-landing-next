@@ -131,12 +131,21 @@ export const cmsApi = {
         } | null;
       }[];
       teachersPool: { id: string; name: string }[];
+      sessionTasks?: {
+        id: string;
+        title: string;
+        description: string;
+        frequency: string;
+        isCompleted: boolean;
+        notes: string;
+      }[];
     }>(`/api/cms/sessions/${id}`),
     saveDetail: (id: string, data: {
       teacherId?: string | null;
       room?: string | null;
       attendance?: { studentClassId: string; status: string; notes?: string }[];
       artworks?: { studentCode: string; imageUrl?: string; title?: string; comment?: string; isDeleted?: boolean }[];
+      taskCompletions?: { taskId: string; isCompleted: boolean; notes?: string }[];
     }) => fetchJson<{ message: string }>(`/api/cms/sessions/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -234,4 +243,41 @@ export const cmsApi = {
       method: "DELETE",
     }),
   },
+  
+  tasks: {
+    list: (params: { frequency?: string; teacherId?: string } = {}) => {
+      const query = new URLSearchParams();
+      if (params.frequency) query.append("frequency", params.frequency);
+      if (params.teacherId) query.append("teacherId", params.teacherId);
+      return fetchJson<{ tasks: any[]; teacherId?: string }>(`/api/cms/tasks?${query.toString()}`);
+    },
+    create: (data: { title: string; description?: string | null; frequency: string; assignedTeacherId?: string | null }) => fetchJson<{ task: any }>("/api/cms/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: { title: string; description?: string | null; frequency: string; assignedTeacherId?: string | null }) => fetchJson<{ task: any }>(`/api/cms/tasks?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/tasks?id=${id}`, {
+      method: "DELETE",
+    }),
+    toggleCompletion: (data: { taskId: string; isCompleted: boolean; notes?: string; sessionId?: string }) => fetchJson<{ completion?: any; message: string }>("/api/cms/tasks/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    getCompletions: (params: { teacherId?: string; taskId?: string; frequency?: string; startDate?: string; endDate?: string } = {}) => {
+      const query = new URLSearchParams();
+      if (params.teacherId) query.append("teacherId", params.teacherId);
+      if (params.taskId) query.append("taskId", params.taskId);
+      if (params.frequency) query.append("frequency", params.frequency);
+      if (params.startDate) query.append("startDate", params.startDate);
+      if (params.endDate) query.append("endDate", params.endDate);
+      return fetchJson<{ completions: any[] }>(`/api/cms/tasks/completions?${query.toString()}`);
+    }
+  }
 };
+

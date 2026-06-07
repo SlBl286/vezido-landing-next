@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
+import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' font-size='14' font-family='sans-serif' font-weight='bold' fill='%239ca3af' dominant-baseline='middle' text-anchor='middle'>Chưa tải ảnh bài vẽ</text></svg>";
 
@@ -31,6 +32,7 @@ export default function SessionDetailPage({ params }: PageProps) {
   const [sessionInfo, setSessionInfo] = useState<any>(null);
   const [studentsList, setStudentsList] = useState<any[]>([]);
   const [teachersPool, setTeachersPool] = useState<any[]>([]);
+  const [sessionTasks, setSessionTasks] = useState<any[]>([]);
 
   // Metadata edit states
   const [assignedTeacherId, setAssignedTeacherId] = useState<string>("");
@@ -100,6 +102,7 @@ export default function SessionDetailPage({ params }: PageProps) {
       setSessionInfo(data.session);
       setStudentsList(data.students || []);
       setTeachersPool(data.teachersPool || []);
+      setSessionTasks(data.sessionTasks || []);
 
       setAssignedTeacherId(data.session.teacherId || "");
       setRoom(data.session.room || "");
@@ -159,6 +162,19 @@ export default function SessionDetailPage({ params }: PageProps) {
         notes,
       }
     }));
+  };
+
+  // Handle session tasks interactions
+  const handleTaskToggle = (taskId: string, checked: boolean) => {
+    setSessionTasks(prev => prev.map(task =>
+      task.id === taskId ? { ...task, isCompleted: checked } : task
+    ));
+  };
+
+  const handleTaskNotesChange = (taskId: string, notes: string) => {
+    setSessionTasks(prev => prev.map(task =>
+      task.id === taskId ? { ...task, notes } : task
+    ));
   };
 
   // Convert uploaded image file to Base64
@@ -237,11 +253,18 @@ export default function SessionDetailPage({ params }: PageProps) {
           isDeleted: val.isDeleted
         }));
 
+      const tasksPayload = sessionTasks.map(task => ({
+        taskId: task.id,
+        isCompleted: task.isCompleted,
+        notes: task.notes || ""
+      }));
+
       await cmsApi.sessions.saveDetail(id, {
         teacherId: assignedTeacherId || null,
         room: room || null,
         attendance: attendancePayload,
-        artworks: artworksPayload
+        artworks: artworksPayload,
+        taskCompletions: tasksPayload
       });
 
       showNotification("Lưu thành công 🎨", "Mọi thay đổi về điểm danh và bài làm học sinh đã được cập nhật.", "success", () => {
@@ -385,6 +408,91 @@ export default function SessionDetailPage({ params }: PageProps) {
           <div className="text-[10px] font-black text-purple-800 uppercase">🎨 Tranh vẽ nộp</div>
           <div className="text-2xl font-black text-black mt-0.5">{stats.drawings} / {stats.total}</div>
         </div>
+      </div>
+
+      {/* Checklist Widget */}
+      <div className="border-4 border-black bg-white rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4">
+        <h3 className="text-lg font-black text-black flex items-center gap-1.5 px-1 border-b-2 border-black/10 pb-2">
+          📋 Checklist nhiệm vụ dạy học ({sessionTasks.length})
+        </h3>
+        
+        {sessionTasks.length === 0 ? (
+          <p className="text-gray-400 text-sm font-bold py-2 px-1">Không có nhiệm vụ đầu buổi/cuối buổi nào được phân công.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Start of Session Tasks */}
+            <div className="space-y-3">
+              <h4 className="font-extrabold text-sm text-amber-700 bg-amber-50 border-2 border-amber-200 rounded-lg px-2.5 py-1 w-fit">
+                🌅 Đầu buổi dạy
+              </h4>
+              <div className="space-y-3 pl-1">
+                {sessionTasks.filter(t => t.frequency === "SESSION_START").length === 0 ? (
+                  <p className="text-gray-400 text-xs font-bold">Không có việc đầu buổi.</p>
+                ) : (
+                  sessionTasks.filter(t => t.frequency === "SESSION_START").map(task => (
+                    <div key={task.id} className="flex flex-col gap-1.5 p-2.5 bg-gray-50 border-2 border-black/5 rounded-xl">
+                      <CustomCheckbox
+                        checked={task.isCompleted}
+                        onChange={(checked) => handleTaskToggle(task.id, checked)}
+                        label={
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                            {task.description && <span className="font-bold text-[10px] text-gray-500 mt-0.5">{task.description}</span>}
+                          </div>
+                        }
+                      />
+                      {task.isCompleted && (
+                        <input
+                          type="text"
+                          value={task.notes}
+                          onChange={(e) => handleTaskNotesChange(task.id, e.target.value)}
+                          placeholder="Ghi chú kết quả thực hiện (nếu có)..."
+                          className="w-full mt-1 border-2 border-black rounded-lg p-1.5 bg-white text-xs font-bold focus:outline-none"
+                        />
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* End of Session Tasks */}
+            <div className="space-y-3">
+              <h4 className="font-extrabold text-sm text-purple-700 bg-purple-50 border-2 border-purple-200 rounded-lg px-2.5 py-1 w-fit">
+                🌇 Cuối buổi dạy
+              </h4>
+              <div className="space-y-3 pl-1">
+                {sessionTasks.filter(t => t.frequency === "SESSION_END").length === 0 ? (
+                  <p className="text-gray-400 text-xs font-bold">Không có việc cuối buổi.</p>
+                ) : (
+                  sessionTasks.filter(t => t.frequency === "SESSION_END").map(task => (
+                    <div key={task.id} className="flex flex-col gap-1.5 p-2.5 bg-gray-50 border-2 border-black/5 rounded-xl">
+                      <CustomCheckbox
+                        checked={task.isCompleted}
+                        onChange={(checked) => handleTaskToggle(task.id, checked)}
+                        label={
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                            {task.description && <span className="font-bold text-[10px] text-gray-500 mt-0.5">{task.description}</span>}
+                          </div>
+                        }
+                      />
+                      {task.isCompleted && (
+                        <input
+                          type="text"
+                          value={task.notes}
+                          onChange={(e) => handleTaskNotesChange(task.id, e.target.value)}
+                          placeholder="Ghi chú kết quả thực hiện (nếu có)..."
+                          className="w-full mt-1 border-2 border-black rounded-lg p-1.5 bg-white text-xs font-bold focus:outline-none"
+                        />
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Student List Section */}
