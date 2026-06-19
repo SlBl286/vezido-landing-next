@@ -71,7 +71,7 @@ export default function PricingPage() {
         
         {/* Title Header */}
         <header className="text-center max-w-2xl mx-auto space-y-3">
-          <span className="text-sm bg-purple-100 border-2 border-black rounded-lg px-3 py-1 font-black text-purple-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider">
+          <span className="inline-block text-sm bg-purple-100 border-2 border-black rounded-lg px-3 py-1 font-black text-purple-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider">
             Biểu phí & Khóa học
           </span>
           <h1 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight">
@@ -90,7 +90,7 @@ export default function PricingPage() {
               <div 
                 key={plan.id}
                 className={`border-4 border-black bg-white rounded-3xl p-6 md:p-8 flex flex-col justify-between relative shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1.5 transition-all duration-200 ${
-                  plan.popular ? "scale-105 md:-translate-y-2 border-sky-500 shadow-sky-500/10" : ""
+                  plan.popular ? "md:scale-105 md:-translate-y-2 border-sky-500 shadow-sky-500/10" : ""
                 }`}
               >
                 {/* Popular Badge */}
@@ -103,7 +103,7 @@ export default function PricingPage() {
                 <div className="space-y-6">
                   {/* Category Header */}
                   <div className="flex justify-between items-start">
-                    <span className={`text-[10px] ${plan.color} ${plan.textColor} border-2 border-black px-2.5 py-1 rounded font-black uppercase tracking-wide`}>
+                    <span className={`inline-block text-[10px] ${plan.color} ${plan.textColor} border-2 border-black px-2.5 py-1 rounded font-black uppercase tracking-wide`}>
                       {plan.title}
                     </span>
                     <Icon className="w-6 h-6 text-gray-400 shrink-0" />

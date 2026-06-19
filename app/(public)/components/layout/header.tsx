@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MenuDrawer } from "./menu_drawer";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 const MENU_ITEMS = [
   { label: "Trang chủ", href: "/" },
@@ -22,11 +23,13 @@ export const Header = () => {
       <div className="flex items-center gap-2">
         <MenuDrawer />
         <Link href="/" className="flex items-center gap-2">
-          <img
+          <Image
             src="/logo.png"
             alt="Vẽ zì đó"
-            width={80}
-            className="object-contain h-10 w-auto"
+            width={100}
+            height={100}
+            loading="eager"
+            className="object-contain h-15 w-auto"
           />
         </Link>
       </div>

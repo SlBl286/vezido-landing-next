@@ -11,6 +11,7 @@ export const Header = () => {
           <Image
             src="/logo.png"
             alt="Vẽ zì đó"
+            loading="eager"
             width={60}
             height={60}
             className="object-contain"

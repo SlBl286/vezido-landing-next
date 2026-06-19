@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const role = (session.user as any).role;
-  if (role !== "ADMIN" && role !== "TEACHER") {
+  if (role !== "ADMIN" && role !== "TEACHER" && role !== "ASSISTANT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

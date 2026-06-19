@@ -13,14 +13,59 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const classId = searchParams.get("classId");
+  const allUnique = searchParams.get("allUnique") === "true";
 
-  if (!classId) {
-    return NextResponse.json({ error: "classId is required" }, { status: 400 });
+  if (!classId && !allUnique) {
+    return NextResponse.json({ error: "classId or allUnique is required" }, { status: 400 });
   }
 
   try {
-    // Check access permissions
-    if (role === "TEACHER") {
+    if (allUnique) {
+      let studentClasses = [];
+      if (role === "ADMIN") {
+        studentClasses = await prisma.studentClass.findMany({
+          orderBy: { createdAt: "desc" },
+        });
+      } else if (role === "TEACHER" || role === "ASSISTANT") {
+        const teacherProfile = await prisma.teacher.findUnique({
+          where: { userId },
+        });
+        if (!teacherProfile) {
+          return NextResponse.json({ error: "Teacher profile not found" }, { status: 403 });
+        }
+        const teacherClasses = await prisma.class.findMany({
+          where: {
+            teachers: {
+              some: { id: teacherProfile.id }
+            }
+          },
+          select: { id: true }
+        });
+        const classIds = teacherClasses.map(c => c.id);
+        studentClasses = await prisma.studentClass.findMany({
+          where: {
+            classId: { in: classIds }
+          },
+          orderBy: { createdAt: "desc" },
+        });
+      } else {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      // Filter uniquely by studentCode in memory
+      const uniqueStudentsMap = new Map();
+      for (const s of studentClasses) {
+        const key = s.studentCode?.trim() || `NO-CODE-${s.id}`;
+        if (!uniqueStudentsMap.has(key)) {
+          uniqueStudentsMap.set(key, s);
+        }
+      }
+      const uniqueStudents = Array.from(uniqueStudentsMap.values());
+      return NextResponse.json({ students: uniqueStudents });
+    }
+
+    // Original flow: check access permissions and return students of a specific class
+    if (role === "TEACHER" || role === "ASSISTANT") {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId },
       });
@@ -30,7 +75,7 @@ export async function GET(req: Request) {
       }
 
       const classRecord = await prisma.class.findUnique({
-        where: { id: classId },
+        where: { id: classId! },
         select: {
           teachers: {
             select: { id: true }
@@ -47,7 +92,7 @@ export async function GET(req: Request) {
     }
 
     const students = await prisma.studentClass.findMany({
-      where: { classId },
+      where: { classId: classId! },
       orderBy: { createdAt: "desc" },
     });
 
@@ -76,7 +121,7 @@ export async function POST(req: Request) {
     }
 
     // Check permissions
-    if (role === "TEACHER") {
+    if (role === "TEACHER" || role === "ASSISTANT") {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId },
       });
@@ -194,7 +239,7 @@ export async function DELETE(req: Request) {
     }
 
     // Check permissions
-    if (role === "TEACHER") {
+    if (role === "TEACHER" || role === "ASSISTANT") {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId },
       });

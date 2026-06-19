@@ -43,6 +43,29 @@ export default function TasksPage() {
   const [reportEndDate, setReportEndDate] = useState<string>("");
   const [loadingReports, setLoadingReports] = useState(false);
 
+  const reportsStats = useMemo(() => {
+    let totalReward = 0;
+    let totalPenalty = 0;
+    let totalCompleted = 0;
+
+    const parseMoney = (val: string | null | undefined): number => {
+      if (!val) return 0;
+      const cleaned = val.replace(/\D/g, "");
+      return parseInt(cleaned, 10) || 0;
+    };
+
+    completions.forEach((c) => {
+      if (c.status === "COMPLETED") {
+        totalReward += parseMoney(c.reward);
+        totalCompleted += 1;
+      } else {
+        totalPenalty += parseMoney(c.penalty);
+      }
+    });
+
+    return { totalReward, totalPenalty, totalCompleted };
+  }, [completions]);
+
   // Modal States
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null); // null means creating
@@ -50,7 +73,9 @@ export default function TasksPage() {
     title: "",
     description: "",
     frequency: "WEEKLY",
-    assignedTeacherId: ""
+    assignedTeacherId: "",
+    reward: "",
+    penalty: ""
   });
   const [submittingTask, setSubmittingTask] = useState(false);
 
@@ -143,7 +168,7 @@ export default function TasksPage() {
   const [loadingMyCompletions, setLoadingMyCompletions] = useState(false);
 
   const fetchMyCompletions = async () => {
-    if (role !== "TEACHER" || !teacherId) return;
+    if ((role !== "TEACHER" && role !== "ASSISTANT") || !teacherId) return;
     setLoadingMyCompletions(true);
     try {
       // Get all completions for this teacher
@@ -246,7 +271,7 @@ export default function TasksPage() {
   };
 
   useEffect(() => {
-    if (teacherId && role === "TEACHER") {
+    if (teacherId && (role === "TEACHER" || role === "ASSISTANT")) {
       fetchMyCompletions();
       fetchTodaySessions(teacherId);
     }
@@ -284,7 +309,9 @@ export default function TasksPage() {
       title: "",
       description: "",
       frequency: "WEEKLY",
-      assignedTeacherId: ""
+      assignedTeacherId: "",
+      reward: "",
+      penalty: ""
     });
     setIsTaskModalOpen(true);
   };
@@ -295,7 +322,9 @@ export default function TasksPage() {
       title: task.title,
       description: task.description || "",
       frequency: task.frequency,
-      assignedTeacherId: task.assignedTeacherId || ""
+      assignedTeacherId: task.assignedTeacherId || "",
+      reward: task.reward || "",
+      penalty: task.penalty || ""
     });
     setIsTaskModalOpen(true);
   };
@@ -312,7 +341,9 @@ export default function TasksPage() {
           title: taskForm.title,
           description: taskForm.description || null,
           frequency: taskForm.frequency,
-          assignedTeacherId: taskForm.assignedTeacherId || null
+          assignedTeacherId: taskForm.assignedTeacherId || null,
+          reward: taskForm.reward || null,
+          penalty: taskForm.penalty || null
         });
         showNotification("Cập nhật thành công ✏️", "Công việc đã được lưu thay đổi.", "success");
       } else {
@@ -321,7 +352,9 @@ export default function TasksPage() {
           title: taskForm.title,
           description: taskForm.description || null,
           frequency: taskForm.frequency,
-          assignedTeacherId: taskForm.assignedTeacherId || null
+          assignedTeacherId: taskForm.assignedTeacherId || null,
+          reward: taskForm.reward || null,
+          penalty: taskForm.penalty || null
         });
         showNotification("Tạo thành công 🎉", "Công việc mới đã được đưa vào hệ thống.", "success");
       }
@@ -417,7 +450,7 @@ export default function TasksPage() {
     );
   }
 
-  if (role !== "ADMIN" && role !== "TEACHER") {
+  if (role !== "ADMIN" && role !== "TEACHER" && role !== "ASSISTANT") {
     return (
       <div className="border-4 border-black bg-white rounded-3xl p-8 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-md mx-auto my-12">
         <span className="text-6xl mb-4 block">🚫</span>
@@ -471,7 +504,7 @@ export default function TasksPage() {
 
       {/* Tabs Menu */}
       <div className="flex gap-2.5 overflow-x-auto pb-1">
-        {role === "TEACHER" && (
+        {(role === "TEACHER" || role === "ASSISTANT") && (
           <>
             <button
               onClick={() => setActiveTab("checklist")}
@@ -519,7 +552,7 @@ export default function TasksPage() {
       </div>
 
       {/* Tab 1: Teacher Checklist */}
-      {role === "TEACHER" && activeTab === "checklist" && (
+      {(role === "TEACHER" || role === "ASSISTANT") && activeTab === "checklist" && (
         <div className="space-y-6">
           {/* Today's Class Session Checklist */}
           {teacherSessionTasks.length > 0 && (
@@ -574,7 +607,19 @@ export default function TasksPage() {
                                         onChange={() => handleSessionTaskToggle(task.id, session.id, isCompleted, notesVal)}
                                         label={
                                           <div className="flex flex-col">
-                                            <span className="font-extrabold text-xs text-gray-900">{task.title}</span>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <span className="font-extrabold text-xs text-gray-900">{task.title}</span>
+                                              {task.reward && (
+                                                <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                                  🎁 {task.reward}
+                                                </span>
+                                              )}
+                                              {task.penalty && (
+                                                <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                                  ⚠️ {task.penalty}
+                                                </span>
+                                              )}
+                                            </div>
                                             {task.description && <span className="font-bold text-[9px] text-gray-500 mt-0.5">{task.description}</span>}
                                           </div>
                                         }
@@ -623,7 +668,19 @@ export default function TasksPage() {
                                         onChange={() => handleSessionTaskToggle(task.id, session.id, isCompleted, notesVal)}
                                         label={
                                           <div className="flex flex-col">
-                                            <span className="font-extrabold text-xs text-gray-900">{task.title}</span>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <span className="font-extrabold text-xs text-gray-900">{task.title}</span>
+                                              {task.reward && (
+                                                <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                                  🎁 {task.reward}
+                                                </span>
+                                              )}
+                                              {task.penalty && (
+                                                <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                                  ⚠️ {task.penalty}
+                                                </span>
+                                              )}
+                                            </div>
                                             {task.description && <span className="font-bold text-[9px] text-gray-500 mt-0.5">{task.description}</span>}
                                           </div>
                                         }
@@ -694,7 +751,19 @@ export default function TasksPage() {
                           onChange={() => handleTeacherTaskToggle(task.id, status.completed, status.notes)}
                           label={
                             <div className="flex flex-col">
-                              <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                                {task.reward && (
+                                  <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                    🎁 {task.reward}
+                                  </span>
+                                )}
+                                {task.penalty && (
+                                  <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                    ⚠️ {task.penalty}
+                                  </span>
+                                )}
+                              </div>
                               {task.description && <span className="font-bold text-[10px] text-gray-500 mt-0.5">{task.description}</span>}
                             </div>
                           }
@@ -741,7 +810,19 @@ export default function TasksPage() {
                           onChange={() => handleTeacherTaskToggle(task.id, status.completed, status.notes)}
                           label={
                             <div className="flex flex-col">
-                              <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                                {task.reward && (
+                                  <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                    🎁 {task.reward}
+                                  </span>
+                                )}
+                                {task.penalty && (
+                                  <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                    ⚠️ {task.penalty}
+                                  </span>
+                                )}
+                              </div>
                               {task.description && <span className="font-bold text-[10px] text-gray-500 mt-0.5">{task.description}</span>}
                             </div>
                           }
@@ -788,7 +869,19 @@ export default function TasksPage() {
                           onChange={() => handleTeacherTaskToggle(task.id, status.completed, status.notes)}
                           label={
                             <div className="flex flex-col">
-                              <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                                {task.reward && (
+                                  <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                    🎁 {task.reward}
+                                  </span>
+                                )}
+                                {task.penalty && (
+                                  <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                    ⚠️ {task.penalty}
+                                  </span>
+                                )}
+                              </div>
                               {task.description && <span className="font-bold text-[10px] text-gray-500 mt-0.5">{task.description}</span>}
                             </div>
                           }
@@ -822,7 +915,7 @@ export default function TasksPage() {
       )}
 
       {/* Tab 2: Teacher Completions Log */}
-      {role === "TEACHER" && activeTab === "log" && (
+      {(role === "TEACHER" || role === "ASSISTANT") && activeTab === "log" && (
         <div className="border-4 border-black bg-white rounded-3xl p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)]">
           <h3 className="text-xl font-black text-black mb-4">Lịch sử check việc đã làm</h3>
           
@@ -837,6 +930,7 @@ export default function TasksPage() {
                   <tr className="bg-gray-100 border-b-3 border-black text-sm font-black text-black">
                     <th className="p-3">Tên công việc</th>
                     <th className="p-3">Tần suất</th>
+                    <th className="p-3">Thưởng/Phạt</th>
                     <th className="p-3">Ngày hoàn thành</th>
                     <th className="p-3">Ngữ cảnh</th>
                     <th className="p-3">Ghi chú thực hiện</th>
@@ -852,6 +946,23 @@ export default function TasksPage() {
                           <span className="border-2 border-black rounded px-1.5 py-0.5 bg-[#fefaf0]">
                             {freqLabel}
                           </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-col gap-1">
+                            {comp.reward && (
+                              <span className="text-[10px] font-black text-emerald-700 bg-[#a8e6cf]/30 border border-black/20 rounded px-1.5 py-0.5 w-fit">
+                                🎁 {comp.reward}
+                              </span>
+                            )}
+                            {comp.penalty && (
+                              <span className="text-[10px] font-black text-red-700 bg-[#ffb3ba]/30 border border-black/20 rounded px-1.5 py-0.5 w-fit">
+                                ⚠️ {comp.penalty}
+                              </span>
+                            )}
+                            {!comp.reward && !comp.penalty && (
+                              <span className="text-[10px] font-bold text-gray-400">--</span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3 font-mono">{new Date(comp.completedAt).toLocaleString("vi-VN")}</td>
                         <td className="p-3">
@@ -880,7 +991,7 @@ export default function TasksPage() {
             {tasks.length === 0 ? (
               <div className="col-span-full text-center py-20 border-4 border-dashed border-gray-300 rounded-3xl bg-white">
                 <p className="text-lg font-bold text-gray-400">Chưa có công việc nào được định nghĩa 📋</p>
-                <p className="text-gray-400 text-sm mt-1">Hãy nhấn nút "Thêm công việc mới" để tạo.</p>
+                <p className="text-gray-400 text-sm mt-1">Hãy nhấn nút &quot;Thêm công việc mới&quot; để tạo.</p>
               </div>
             ) : (
               tasks.map((task) => {
@@ -917,6 +1028,19 @@ export default function TasksPage() {
                       {task.description && (
                         <p className="text-xs font-medium text-gray-500 leading-relaxed line-clamp-3 bg-gray-50 p-2 border border-black/5 rounded-lg">{task.description}</p>
                       )}
+                      
+                      <div className="flex gap-2 mt-2.5">
+                        {task.reward && (
+                          <span className="text-[10px] font-black bg-[#a8e6cf] border-2 border-black rounded-lg px-2 py-0.5 text-emerald-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                            🎁 Thưởng: {task.reward}
+                          </span>
+                        )}
+                        {task.penalty && (
+                          <span className="text-[10px] font-black bg-[#ffb3ba] border-2 border-black rounded-lg px-2 py-0.5 text-red-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                            ⚠️ Phạt: {task.penalty}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="pt-4 border-t-2 border-dashed border-black/10 mt-4">
@@ -938,6 +1062,28 @@ export default function TasksPage() {
         <div className="border-4 border-black bg-white rounded-3xl p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] space-y-6">
           <h3 className="text-xl font-black text-black">Báo cáo & Lịch sử kiểm tra công việc</h3>
           
+          {/* Stats Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="border-3 border-black bg-[#a8e6cf] rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] transition-all">
+              <span className="text-[10px] font-black text-emerald-950 block uppercase tracking-wider">💰 Tổng tiền thưởng tích lũy</span>
+              <span className="text-2xl font-black text-black mt-1 block">
+                +{reportsStats.totalReward.toLocaleString("vi-VN")}đ
+              </span>
+            </div>
+            <div className="border-3 border-black bg-[#ffb3ba] rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] transition-all">
+              <span className="text-[10px] font-black text-red-950 block uppercase tracking-wider">⚠️ Tổng tiền phạt ước tính</span>
+              <span className="text-2xl font-black text-black mt-1 block">
+                -{reportsStats.totalPenalty.toLocaleString("vi-VN")}đ
+              </span>
+            </div>
+            <div className="border-3 border-black bg-[#bae1ff] rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] transition-all">
+              <span className="text-[10px] font-black text-sky-950 block uppercase tracking-wider">✅ Số nhiệm vụ hoàn thành</span>
+              <span className="text-2xl font-black text-black mt-1 block">
+                {reportsStats.totalCompleted} / {completions.length}
+              </span>
+            </div>
+          </div>
+
           {/* Filters Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50 border-3 border-black rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
             <div>
@@ -1021,6 +1167,7 @@ export default function TasksPage() {
                     <th className="p-3">Giáo viên</th>
                     <th className="p-3">Công việc</th>
                     <th className="p-3">Tần suất</th>
+                    <th className="p-3">Thưởng/Phạt</th>
                     <th className="p-3">Ngày làm</th>
                     <th className="p-3">Ngữ cảnh</th>
                     <th className="p-3">Ghi chú</th>
@@ -1037,6 +1184,23 @@ export default function TasksPage() {
                           <span className="border-2 border-black rounded px-1.5 py-0.5 bg-yellow-50 text-[10px]">
                             {freqLabel}
                           </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-col gap-1">
+                            {comp.reward && (
+                              <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-300 rounded px-1.5 py-0.5 w-fit">
+                                🎁 {comp.reward}
+                              </span>
+                            )}
+                            {comp.penalty && (
+                              <span className="text-[10px] font-black text-red-700 bg-red-50 border border-red-300 rounded px-1.5 py-0.5 w-fit">
+                                ⚠️ {comp.penalty}
+                              </span>
+                            )}
+                            {!comp.reward && !comp.penalty && (
+                              <span className="text-[10px] font-bold text-gray-400">--</span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3 font-mono">{new Date(comp.completedAt).toLocaleString("vi-VN")}</td>
                         <td className="p-3">
@@ -1104,6 +1268,29 @@ export default function TasksPage() {
                   onChange={(val) => setTaskForm({ ...taskForm, frequency: val })}
                   options={FREQUENCY_OPTIONS}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-700 mb-1.5 uppercase">Thưởng</label>
+                  <input
+                    type="text"
+                    placeholder="Ví dụ: 10.000đ hoặc 5 sao"
+                    value={taskForm.reward || ""}
+                    onChange={(e) => setTaskForm({ ...taskForm, reward: e.target.value })}
+                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-gray-700 mb-1.5 uppercase">Phạt</label>
+                  <input
+                    type="text"
+                    placeholder="Ví dụ: -5.000đ hoặc Cảnh cáo"
+                    value={taskForm.penalty || ""}
+                    onChange={(e) => setTaskForm({ ...taskForm, penalty: e.target.value })}
+                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-sm"
+                  />
+                </div>
               </div>
 
               <div>

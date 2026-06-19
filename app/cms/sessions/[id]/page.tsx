@@ -287,7 +287,7 @@ export default function SessionDetailPage({ params }: PageProps) {
   }
 
   const role = (session?.user as any)?.role;
-  if (role !== "ADMIN" && role !== "TEACHER") {
+  if (role !== "ADMIN" && role !== "TEACHER" && role !== "ASSISTANT") {
     return (
       <div className="border-4 border-black bg-white rounded-3xl p-8 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-md mx-auto my-12">
         <span className="text-6xl mb-4 block">🚫</span>
@@ -436,7 +436,19 @@ export default function SessionDetailPage({ params }: PageProps) {
                         onChange={(checked) => handleTaskToggle(task.id, checked)}
                         label={
                           <div className="flex flex-col">
-                            <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                              {task.reward && (
+                                <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                  🎁 {task.reward}
+                                </span>
+                              )}
+                              {task.penalty && (
+                                <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                  ⚠️ {task.penalty}
+                                </span>
+                              )}
+                            </div>
                             {task.description && <span className="font-bold text-[10px] text-gray-500 mt-0.5">{task.description}</span>}
                           </div>
                         }
@@ -472,7 +484,19 @@ export default function SessionDetailPage({ params }: PageProps) {
                         onChange={(checked) => handleTaskToggle(task.id, checked)}
                         label={
                           <div className="flex flex-col">
-                            <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
+                              {task.reward && (
+                                <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                  🎁 {task.reward}
+                                </span>
+                              )}
+                              {task.penalty && (
+                                <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                  ⚠️ {task.penalty}
+                                </span>
+                              )}
+                            </div>
                             {task.description && <span className="font-bold text-[10px] text-gray-500 mt-0.5">{task.description}</span>}
                           </div>
                         }

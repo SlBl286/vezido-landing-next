@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Plus, Loader2 } from "lucide-react";
+import { X, Plus, Loader2, Upload, Trash2 } from "lucide-react";
 import { NotificationModal } from "./NotificationModal";
+import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 
 interface ImportSupplyModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
     purpose: ""
   });
 
+  const [selectedFiles, setSelectedFiles] = useState<{ name: string; base64: string }[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState<{
@@ -42,6 +44,31 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
 
   if (!isOpen) return null;
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Kích thước file không được vượt quá 5MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          setSelectedFiles((prev) => [...prev, { name: file.name, base64: reader.result as string }]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    // Clear value to allow choosing the same file again
+    e.target.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -56,7 +83,8 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
           type: "IMPORT",
           quantity: Number(form.quantity),
           pricePerUnit: Number(form.pricePerUnit),
-          purpose: form.purpose.trim()
+          purpose: form.purpose.trim(),
+          invoices: selectedFiles.map(f => f.base64)
         })
       });
 
@@ -78,6 +106,7 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
         pricePerUnit: "",
         purpose: ""
       });
+      setSelectedFiles([]);
     } catch (err: any) {
       setError(err.message || "Có lỗi xảy ra");
     } finally {
@@ -87,6 +116,11 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
 
   const selectedItem = supplies.find(s => s.id === form.itemId);
   const totalCost = Number(form.quantity) * Number(form.pricePerUnit);
+
+  const supplyOptions = supplies.map(s => ({
+    value: s.id,
+    label: `${s.name} (${s.quantity} ${s.unit} hiện tại)`
+  }));
 
   return (
     <>
@@ -113,18 +147,12 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-gray-800 mb-1">Chọn vật phẩm *</label>
-              <select
-                required
-                className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none"
+              <CustomSelect
                 value={form.itemId}
-                onChange={(e) => setForm({ ...form, itemId: e.target.value })}
-              >
-                {supplies.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.quantity} {s.unit} hiện tại)
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setForm({ ...form, itemId: val })}
+                options={supplyOptions}
+                placeholder="Chọn vật phẩm..."
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -136,7 +164,7 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
                     min="1"
                     required
                     placeholder="Số lượng..."
-                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none pr-12"
+                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none pr-12 text-sm"
                     value={form.quantity}
                     onChange={(e) => setForm({ ...form, quantity: e.target.value })}
                   />
@@ -153,7 +181,7 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
                   min="0"
                   required
                   placeholder="Ví dụ: 15000"
-                  className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none"
+                  className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-sm"
                   value={form.pricePerUnit}
                   onChange={(e) => setForm({ ...form, pricePerUnit: e.target.value })}
                 />
@@ -168,11 +196,44 @@ export function ImportSupplyModal({ isOpen, onClose, supplies, onSuccess }: Impo
             )}
 
             <div>
+              <label className="block text-sm font-bold text-gray-800 mb-1">Tải lên hóa đơn (Tùy chọn - PDF hoặc Ảnh)</label>
+              <div className="border-3 border-dashed border-black rounded-xl p-4 bg-gray-50 flex flex-col items-center justify-center hover:bg-stone-50 cursor-pointer relative">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+                <Upload className="w-8 h-8 text-stone-500 mb-2" />
+                <span className="text-xs font-bold text-stone-600">Click hoặc kéo thả tệp tại đây</span>
+                <span className="text-[10px] text-stone-400 font-medium mt-1">Hỗ trợ nhiều tệp PDF, JPG, PNG (tối đa 5MB)</span>
+              </div>
+              
+              {selectedFiles.length > 0 && (
+                <div className="mt-3 space-y-1.5 max-h-32 overflow-y-auto">
+                  {selectedFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between border-2 border-black rounded-lg p-2 bg-white text-xs font-bold shadow-[1px_1px_0px_rgba(0,0,0,1)] animate-in fade-in slide-in-from-top-1 duration-100">
+                      <span className="truncate flex-1 pr-2 text-stone-700">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(idx)}
+                        className="text-rose-500 hover:text-rose-700 p-0.5 cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
               <label className="block text-sm font-bold text-gray-800 mb-1">Ghi chú / Nhà cung cấp</label>
               <textarea
                 placeholder="Ví dụ: Nhập thêm từ hiệu sách Tiền Phong làm họa cụ vẽ cho tháng mới..."
                 rows={2}
-                className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-medium text-black focus:outline-none"
+                className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-medium text-black focus:outline-none text-sm"
                 value={form.purpose}
                 onChange={(e) => setForm({ ...form, purpose: e.target.value })}
               />

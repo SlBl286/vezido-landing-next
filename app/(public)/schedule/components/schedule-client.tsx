@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 
 interface Specialty {
   id: string;
@@ -36,9 +38,12 @@ interface ScheduleClientProps {
   initialSessions: ClassSession[];
   startDateStr: string;
   endDateStr: string;
+  currentMondayStr: string;
 }
 
-export function ScheduleClient({ initialSessions, startDateStr, endDateStr }: ScheduleClientProps) {
+export function ScheduleClient({ initialSessions, startDateStr, endDateStr, currentMondayStr }: ScheduleClientProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [ageFilter, setAgeFilter] = useState<string>("ALL");
 
   const matchesAgeFilter = (className: string, filter: string) => {
@@ -116,13 +121,93 @@ export function ScheduleClient({ initialSessions, startDateStr, endDateStr }: Sc
     });
   };
 
+  const getIsToday = (dayValue: number) => {
+    const [year, month, day] = currentMondayStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    const dayOffset = dayValue === 0 ? 6 : dayValue - 1;
+    date.setDate(date.getDate() + dayOffset);
+    
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
+
+  const handlePrevWeek = () => {
+    const [year, month, day] = currentMondayStr.split("-").map(Number);
+    const prevMonday = new Date(year, month - 1, day, 12, 0, 0);
+    prevMonday.setDate(prevMonday.getDate() - 7);
+    
+    const y = prevMonday.getFullYear();
+    const m = String(prevMonday.getMonth() + 1).padStart(2, '0');
+    const d = String(prevMonday.getDate()).padStart(2, '0');
+    
+    startTransition(() => {
+      router.push(`?date=${y}-${m}-${d}`, { scroll: false });
+    });
+  };
+
+  const handleNextWeek = () => {
+    const [year, month, day] = currentMondayStr.split("-").map(Number);
+    const nextMonday = new Date(year, month - 1, day, 12, 0, 0);
+    nextMonday.setDate(nextMonday.getDate() + 7);
+    
+    const y = nextMonday.getFullYear();
+    const m = String(nextMonday.getMonth() + 1).padStart(2, '0');
+    const d = String(nextMonday.getDate()).padStart(2, '0');
+    
+    startTransition(() => {
+      router.push(`?date=${y}-${m}-${d}`, { scroll: false });
+    });
+  };
+
+  const handleCurrentWeek = () => {
+    startTransition(() => {
+      router.push(`/schedule`, { scroll: false });
+    });
+  };
+
   return (
     <div className="w-full">
-      <div className="flex flex-col w-full bg-transparent justify-center my-10 gap-y-2">
+      <div className="flex flex-col w-full bg-transparent justify-center my-10 gap-y-4 items-center">
         <h1 className="text-3xl lg:text-5xl font-black text-sky-600 uppercase tracking-tight">
           Lịch các lớp theo tuần 🎨
         </h1>
-        <p className="ml-4 font-bold text-gray-500">
+        
+        {/* Navigation Weeks */}
+        <div className="flex items-center gap-4 mt-2">
+          <Button
+            onClick={handlePrevWeek}
+            disabled={isPending}
+            variant="outline"
+            className="bg-white hover:bg-gray-50 border-3 border-black text-black px-4 py-2.5 rounded-xl font-bold shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <ChevronLeft className="w-5 h-5 text-black" />
+            <span className="hidden sm:inline">Tuần trước</span>
+          </Button>
+
+          <Button
+            onClick={handleCurrentWeek}
+            disabled={isPending}
+            variant="outline"
+            className="bg-[#ffd275] hover:bg-[#ffc342] border-3 border-black text-black px-5 py-2.5 rounded-xl font-bold shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <Calendar className="w-4 h-4 text-black" />
+            <span>Tuần này</span>
+          </Button>
+
+          <Button
+            onClick={handleNextWeek}
+            disabled={isPending}
+            variant="outline"
+            className="bg-white hover:bg-gray-50 border-3 border-black text-black px-4 py-2.5 rounded-xl font-bold shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <span className="hidden sm:inline">Tuần sau</span>
+            <ChevronRight className="w-5 h-5 text-black" />
+          </Button>
+        </div>
+
+        <p className="font-bold text-gray-500 text-sm md:text-base">
           Từ {startDateStr} đến {endDateStr}
         </p>
       </div>
@@ -197,10 +282,12 @@ export function ScheduleClient({ initialSessions, startDateStr, endDateStr }: Sc
       </div>
 
       {/* Timetable Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6 my-10 w-full mx-auto container px-4 lg:px-0">
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6 my-10 w-full mx-auto container px-4 lg:px-0 transition-opacity duration-200 ${
+        isPending ? "opacity-45 pointer-events-none" : "opacity-100"
+      }`}>
         {daysOfWeek.map((day, idx) => {
           const daySessions = getSessionsForDay(day.value);
-          const isToday = new Date().getDay() === day.value;
+          const isToday = getIsToday(day.value);
 
           return (
             <div key={day.value} className="flex flex-col gap-4 min-w-[150px]">

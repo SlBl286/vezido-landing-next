@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   }
 
   const role = (session.user as any).role;
-  if (role !== "ADMIN" && role !== "TEACHER") {
+  if (role !== "ADMIN" && role !== "TEACHER" && role !== "ASSISTANT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { title, description, frequency, assignedTeacherId } = body;
+    const { title, description, frequency, assignedTeacherId, reward, penalty } = body;
 
     if (!title || !frequency) {
       return NextResponse.json({ error: "Tên công việc và tần suất là bắt buộc" }, { status: 400 });
@@ -95,7 +95,9 @@ export async function POST(req: Request) {
         title,
         description: description || null,
         frequency,
-        assignedTeacherId: assignedTeacherId || null
+        assignedTeacherId: assignedTeacherId || null,
+        reward: reward ? String(reward) : null,
+        penalty: penalty ? String(penalty) : null
       }
     });
 
@@ -121,7 +123,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { title, description, frequency, assignedTeacherId } = body;
+    const { title, description, frequency, assignedTeacherId, reward, penalty } = body;
 
     if (!title || !frequency) {
       return NextResponse.json({ error: "Tên công việc và tần suất là bắt buộc" }, { status: 400 });
@@ -133,7 +135,9 @@ export async function PUT(req: Request) {
         title,
         description: description || null,
         frequency,
-        assignedTeacherId: assignedTeacherId || null
+        assignedTeacherId: assignedTeacherId || null,
+        reward: reward !== undefined ? (reward ? String(reward) : null) : undefined,
+        penalty: penalty !== undefined ? (penalty ? String(penalty) : null) : undefined
       }
     });
 

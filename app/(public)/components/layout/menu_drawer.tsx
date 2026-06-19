@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 const MENU_ITEMS = [
   { label: "🏠 Trang chủ", href: "/" },
@@ -34,7 +35,14 @@ export const MenuDrawer = () => {
       <SheetContent side="left" className="border-r-4 border-black p-0 w-72">
         <SheetHeader className="px-5 py-4 border-b-3 border-black bg-amber-50">
           <SheetTitle className="w-full flex items-center gap-3 font-black text-left text-base">
-            <img src="/logo.png" alt="logo" width={50} className="object-contain" />
+            <Image
+              src="/logo.png"
+              alt="logo"
+              width={50}
+              height={50}
+              loading="eager"
+              className="object-contain"
+            />
             Vẽ zì đó
           </SheetTitle>
         </SheetHeader>

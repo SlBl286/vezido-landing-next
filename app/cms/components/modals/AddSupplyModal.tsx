@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Plus, Loader2 } from "lucide-react";
 import { NotificationModal } from "./NotificationModal";
+import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 
 interface AddSupplyModalProps {
   isOpen: boolean;
@@ -10,21 +11,17 @@ interface AddSupplyModalProps {
   onSuccess: () => void;
 }
 
-const CATEGORY_OPTIONS = [
-  { value: "Họa cụ", label: "🎨 Họa cụ (Cọ, màu, giấy...)" },
-  { value: "Văn phòng phẩm", label: "✏️ Văn phòng phẩm (Bút, tẩy, thước...)" },
-  { value: "Dọn dẹp", label: "🧹 Dọn dẹp & Vệ sinh" },
-  { value: "Thiết bị", label: "🔌 Thiết bị & Cơ sở vật chất" },
-  { value: "Khác", label: "📦 Khác" }
-];
-
 export function AddSupplyModal({ isOpen, onClose, onSuccess }: AddSupplyModalProps) {
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
-    category: "Họa cụ",
+    categoryId: "",
     unit: "Cái",
     minQuantity: "5",
-    initialQuantity: "0"
+    initialQuantity: "0",
+    purchaseLink: ""
   });
 
   const [error, setError] = useState("");
@@ -41,6 +38,30 @@ export function AddSupplyModal({ isOpen, onClose, onSuccess }: AddSupplyModalPro
     type: "success"
   });
 
+  // Load categories
+  useEffect(() => {
+    async function loadCategories() {
+      setLoadingCategories(true);
+      try {
+        const res = await fetch("/api/cms/supplies/categories");
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data.categories || []);
+          if (data.categories && data.categories.length > 0) {
+            setForm(prev => ({ ...prev, categoryId: data.categories[0].id }));
+          }
+        }
+      } catch (err) {
+        console.error("Error loading categories:", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    }
+    if (isOpen) {
+      loadCategories();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,10 +75,11 @@ export function AddSupplyModal({ isOpen, onClose, onSuccess }: AddSupplyModalPro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
-          category: form.category,
+          categoryId: form.categoryId,
           unit: form.unit.trim(),
           minQuantity: Number(form.minQuantity),
-          initialQuantity: Number(form.initialQuantity)
+          initialQuantity: Number(form.initialQuantity),
+          purchaseLink: form.purchaseLink.trim() || undefined
         })
       });
 
@@ -75,10 +97,11 @@ export function AddSupplyModal({ isOpen, onClose, onSuccess }: AddSupplyModalPro
 
       setForm({
         name: "",
-        category: "Họa cụ",
+        categoryId: categories.length > 0 ? categories[0].id : "",
         unit: "Cái",
         minQuantity: "5",
-        initialQuantity: "0"
+        initialQuantity: "0",
+        purchaseLink: ""
       });
     } catch (err: any) {
       setError(err.message || "Có lỗi xảy ra");
@@ -122,20 +145,29 @@ export function AddSupplyModal({ isOpen, onClose, onSuccess }: AddSupplyModalPro
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-1">Link mua hàng (Tùy chọn)</label>
+              <input
+                type="url"
+                placeholder="Ví dụ: https://shopee.vn/..."
+                className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none"
+                value={form.purchaseLink}
+                onChange={(e) => setForm({ ...form, purchaseLink: e.target.value })}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold text-gray-800 mb-1">Phân loại *</label>
-                <select
-                  className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                >
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <CustomSelect
+                  value={form.categoryId}
+                  onChange={(val) => setForm({ ...form, categoryId: val })}
+                  options={categories.map((cat) => ({
+                    value: cat.id,
+                    label: cat.name
+                  }))}
+                  placeholder={loadingCategories ? "Đang tải..." : "Chọn danh mục..."}
+                />
               </div>
 
               <div>
@@ -222,3 +254,4 @@ export function AddSupplyModal({ isOpen, onClose, onSuccess }: AddSupplyModalPro
     </>
   );
 }
+

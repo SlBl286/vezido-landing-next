@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, Edit2, Trash2, Loader2, Search, AlertTriangle, TrendingUp, DollarSign, History, Box, List, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Search, AlertTriangle, TrendingUp, DollarSign, History, Box, List, ArrowDownCircle, ArrowUpCircle, ShoppingCart } from "lucide-react";
 import { AddSupplyModal } from "@/app/cms/components/modals/AddSupplyModal";
 import { ImportSupplyModal } from "@/app/cms/components/modals/ImportSupplyModal";
 import { ExportSupplyModal } from "@/app/cms/components/modals/ExportSupplyModal";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
+import { ManageSupplyCategoriesModal } from "@/app/cms/components/modals/ManageSupplyCategoriesModal";
+import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 
 export default function SuppliesPage() {
   const [session, setSession] = useState<any>(null);
@@ -31,10 +33,17 @@ export default function SuppliesPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportItemId, setExportItemId] = useState<string | undefined>(undefined);
 
+  // Categories state
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [showManageCategoriesModal, setShowManageCategoriesModal] = useState(false);
+
   // Editing state
   const [editItem, setEditItem] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ name: "", category: "Họa cụ", unit: "Cái", minQuantity: "5" });
+  const [editForm, setEditForm] = useState({ name: "", categoryId: "", unit: "Cái", minQuantity: "5", purchaseLink: "" });
   const [submittingEdit, setSubmittingEdit] = useState(false);
+
+  // File Preview Modal State
+  const [previewFile, setPreviewFile] = useState<{ url: string; name: string } | null>(null);
 
   // Notification State
   const [notification, setNotification] = useState<{
@@ -80,12 +89,25 @@ export default function SuppliesPage() {
   const role = session?.user?.role || "USER";
   const isAdmin = role === "ADMIN";
 
+  // Fetch Categories
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch("/api/cms/supplies/categories");
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data.categories || []);
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+    }
+  };
+
   // Fetch Supplies
   const fetchSupplies = async () => {
     try {
       const url = new URL("/api/cms/supplies", window.location.origin);
       if (search) url.searchParams.set("search", search);
-      if (categoryFilter) url.searchParams.set("category", categoryFilter);
+      if (categoryFilter) url.searchParams.set("categoryId", categoryFilter);
       if (lowStockFilter) url.searchParams.set("lowStock", "true");
 
       const res = await fetch(url.toString());
@@ -128,6 +150,7 @@ export default function SuppliesPage() {
   // Combined data fetcher
   const loadAllData = async () => {
     setLoadingData(true);
+    await fetchCategories();
     await fetchSupplies();
     await fetchTransactions();
     if (isAdmin) {
@@ -177,9 +200,10 @@ export default function SuppliesPage() {
     setEditItem(item);
     setEditForm({
       name: item.name,
-      category: item.category,
+      categoryId: item.categoryId || "",
       unit: item.unit,
-      minQuantity: String(item.minQuantity)
+      minQuantity: String(item.minQuantity),
+      purchaseLink: item.purchaseLink || ""
     });
   };
 
@@ -194,9 +218,10 @@ export default function SuppliesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: editForm.name.trim(),
-          category: editForm.category,
+          categoryId: editForm.categoryId,
           unit: editForm.unit.trim(),
-          minQuantity: Number(editForm.minQuantity)
+          minQuantity: Number(editForm.minQuantity),
+          purchaseLink: editForm.purchaseLink.trim() || undefined
         })
       });
 
@@ -238,6 +263,16 @@ export default function SuppliesPage() {
     );
   };
 
+  if (!loadingSession && (!session || role === "ASSISTANT")) {
+    return (
+      <div className="border-4 border-black bg-white rounded-3xl p-8 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-md mx-auto my-12">
+        <span className="text-6xl mb-4 block">🚫</span>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Không có quyền truy cập</h1>
+        <p className="text-gray-600">Trang này không khả dụng đối với vai trò của bạn.</p>
+      </div>
+    );
+  }
+
   if (loadingSession || (loadingData && supplies.length === 0)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -262,6 +297,15 @@ export default function SuppliesPage() {
           </p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-end">
+          {isAdmin && (
+            <button
+              onClick={() => setShowManageCategoriesModal(true)}
+              className="bg-[#bae1ff] hover:bg-[#97cbf2] text-black border-3 border-black font-black text-sm px-4 py-2.5 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] flex items-center gap-1.5 cursor-pointer"
+            >
+              <List className="w-4 h-4" />
+              <span>Quản lý danh mục</span>
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={() => setShowAddModal(true)}
@@ -356,18 +400,17 @@ export default function SuppliesPage() {
             </div>
 
             {/* Category Filter */}
-            <select
-              className="border-3 border-black rounded-xl p-2 bg-white font-bold text-black focus:outline-none w-full md:w-48"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="">📁 Tất cả phân loại</option>
-              <option value="Họa cụ">🎨 Họa cụ</option>
-              <option value="Văn phòng phẩm">✏️ Văn phòng phẩm</option>
-              <option value="Dọn dẹp">🧹 Dọn dẹp & Vệ sinh</option>
-              <option value="Thiết bị">🔌 Thiết bị & CSVC</option>
-              <option value="Khác">📦 Khác</option>
-            </select>
+            <div className="w-full md:w-56">
+              <CustomSelect
+                value={categoryFilter}
+                onChange={(val) => setCategoryFilter(val)}
+                options={[
+                  { value: "", label: "📁 Tất cả phân loại" },
+                  ...categories.map(cat => ({ value: cat.id, label: cat.name }))
+                ]}
+                placeholder="📁 Tất cả phân loại"
+              />
+            </div>
 
             {/* Low stock checker */}
             <button
@@ -422,6 +465,18 @@ export default function SuppliesPage() {
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {item.purchaseLink && (
+                              <a
+                                href={item.purchaseLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-[#bae1ff] hover:bg-[#8eceff] border-2 border-black rounded-lg p-1.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer text-xs font-black text-black flex items-center gap-1"
+                                title="Link mua hàng"
+                              >
+                                <ShoppingCart className="w-4 h-4" />
+                                <span className="hidden sm:inline">Mua hàng</span>
+                              </a>
+                            )}
                             <button
                               onClick={() => {
                                 setExportItemId(item.id);
@@ -477,13 +532,14 @@ export default function SuppliesPage() {
                   <th className="p-4 font-black text-black text-sm uppercase">Đơn giá</th>
                   <th className="p-4 font-black text-black text-sm uppercase">Tổng tiền</th>
                   <th className="p-4 font-black text-black text-sm uppercase">Ghi chú / Mục đích</th>
+                  <th className="p-4 font-black text-black text-sm uppercase">Hóa đơn</th>
                   <th className="p-4 font-black text-black text-sm uppercase">Người thực hiện</th>
                 </tr>
               </thead>
               <tbody className="divide-y-2 divide-black">
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center font-bold text-gray-400 italic">
+                    <td colSpan={9} className="p-8 text-center font-bold text-gray-400 italic">
                       Chưa ghi nhận lịch sử nhập xuất nào.
                     </td>
                   </tr>
@@ -516,6 +572,27 @@ export default function SuppliesPage() {
                       </td>
                       <td className="p-4 text-xs font-semibold text-stone-500 max-w-[200px] truncate" title={tx.purpose}>
                         {tx.purpose || "-"}
+                      </td>
+                      <td className="p-4">
+                        {tx.invoices && tx.invoices.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {tx.invoices.map((url: string, index: number) => {
+                              const isPdf = url.toLowerCase().endsWith(".pdf");
+                              return (
+                                <button
+                                  key={index}
+                                  onClick={() => setPreviewFile({ url, name: `${isPdf ? "📄 Hóa đơn PDF" : "🖼️ Hóa đơn Ảnh"} ${index + 1}` })}
+                                  className="bg-[#bae1ff] hover:bg-[#a2d4fc] border-2 border-black rounded px-1.5 py-0.5 text-[10px] font-black text-black shadow-[1px_1px_0px_rgba(0,0,0,1)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none transition-all cursor-pointer inline-flex items-center gap-0.5"
+                                  title={`Xem hóa đơn ${index + 1}`}
+                                >
+                                  {isPdf ? "📄 PDF" : "🖼️ Ảnh"} {index + 1}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-stone-400 font-bold text-xs">-</span>
+                        )}
                       </td>
                       <td className="p-4 font-bold text-stone-700">{tx.performedBy}</td>
                     </tr>
@@ -647,20 +724,26 @@ export default function SuppliesPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-bold text-gray-800 mb-1">Link mua hàng (Tùy chọn)</label>
+                <input
+                  type="url"
+                  placeholder="Ví dụ: https://shopee.vn/..."
+                  className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none"
+                  value={editForm.purchaseLink}
+                  onChange={(e) => setEditForm({ ...editForm, purchaseLink: e.target.value })}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-800 mb-1">Phân loại *</label>
-                  <select
-                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none"
-                    value={editForm.category}
-                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                  >
-                    <option value="Họa cụ">🎨 Họa cụ</option>
-                    <option value="Văn phòng phẩm">✏️ Văn phòng phẩm</option>
-                    <option value="Dọn dẹp">🧹 Dọn dẹp & Vệ sinh</option>
-                    <option value="Thiết bị">🔌 Thiết bị & CSVC</option>
-                    <option value="Khác">📦 Khác</option>
-                  </select>
+                  <CustomSelect
+                    value={editForm.categoryId}
+                    onChange={(val) => setEditForm({ ...editForm, categoryId: val })}
+                    options={categories.map(cat => ({ value: cat.id, label: cat.name }))}
+                    placeholder="Chọn danh mục..."
+                  />
                 </div>
 
                 <div>
@@ -737,6 +820,12 @@ export default function SuppliesPage() {
         initialItemId={exportItemId}
       />
 
+      <ManageSupplyCategoriesModal
+        isOpen={showManageCategoriesModal}
+        onClose={() => setShowManageCategoriesModal(false)}
+        onSuccess={loadAllData}
+      />
+
       <NotificationModal
         isOpen={notification.isOpen}
         title={notification.title}
@@ -757,6 +846,59 @@ export default function SuppliesPage() {
           setNotification(prev => ({ ...prev, isOpen: false }));
         }}
       />
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white border-4 border-black rounded-[35px_15px_30px_10px/10px_30px_15px_35px] max-w-3xl w-full p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative my-8 animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setPreviewFile(null)}
+              className="absolute top-4 right-4 bg-[#ffaaa6] hover:bg-[#ff8b94] border-2 border-black rounded-full p-1.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer z-10"
+            >
+              <X className="w-5 h-5 text-black" />
+            </button>
+
+            <h3 className="text-2xl font-black text-black mb-1 flex items-center gap-2 pr-8">
+              {previewFile.name}
+            </h3>
+            <p className="text-gray-500 text-sm mb-6">Xem chi tiết hóa đơn nhập kho trực tiếp trên trình duyệt.</p>
+
+            <div className="border-3 border-black rounded-2xl bg-gray-50 overflow-hidden flex items-center justify-center min-h-[300px] max-h-[600px] relative shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+              {previewFile.url.toLowerCase().endsWith(".pdf") ? (
+                <iframe
+                  src={previewFile.url}
+                  className="w-full h-[550px] border-none"
+                  title={previewFile.name}
+                />
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={previewFile.url}
+                  alt={previewFile.name}
+                  className="max-w-full max-h-[550px] object-contain"
+                />
+              )}
+            </div>
+
+            <div className="pt-6 flex items-center justify-end gap-3">
+              <a
+                href={previewFile.url}
+                download
+                className="bg-[#bae1ff] hover:bg-[#97cbf2] border-3 border-black rounded-xl px-5 py-3 font-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer text-center text-sm"
+              >
+                Tải về tệp gốc
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewFile(null)}
+                className="bg-white hover:bg-gray-50 border-3 border-black rounded-xl px-5 py-3 font-bold shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer text-sm"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

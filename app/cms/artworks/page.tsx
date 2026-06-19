@@ -277,7 +277,15 @@ export default function CMSArtworksPage() {
   }
 
   const user = session?.user;
-  if (!user) return null;
+  if (!user || user.role === "ASSISTANT") {
+    return (
+      <div className="border-4 border-black bg-white rounded-3xl p-8 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-md mx-auto my-12">
+        <span className="text-6xl mb-4 block">🚫</span>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Không có quyền truy cập</h1>
+        <p className="text-gray-600">Trang này không khả dụng đối với vai trò của bạn.</p>
+      </div>
+    );
+  }
 
   // Filter artworks
   const uniqueClassNames = Array.from(new Set(artworks.map(a => a.className).filter(Boolean)));

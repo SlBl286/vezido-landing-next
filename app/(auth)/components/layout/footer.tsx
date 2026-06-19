@@ -6,6 +6,7 @@ export const Footer = () => {
           <img
             src="/logo.png"
             alt="Vẽ zì đó"
+            loading="eager"
             width={50}
             className="object-contain invert"
           />

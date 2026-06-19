@@ -50,7 +50,7 @@ export default function MyClassesPage() {
   };
 
   useEffect(() => {
-    if (!loadingSession && session && (session.user?.role === "TEACHER" || session.user?.role === "ADMIN")) {
+    if (!loadingSession && session && (session.user?.role === "TEACHER" || session.user?.role === "ADMIN" || session.user?.role === "ASSISTANT")) {
       fetchTeacherClasses();
     }
   }, [loadingSession, session]);
@@ -65,12 +65,12 @@ export default function MyClassesPage() {
   }
 
   const user = session?.user;
-  if (!user || (user.role !== "TEACHER" && user.role !== "ADMIN")) {
+  if (!user || (user.role !== "TEACHER" && user.role !== "ADMIN" && user.role !== "ASSISTANT")) {
     return (
       <div className="border-4 border-black bg-white rounded-3xl p-8 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-md mx-auto my-12">
         <span className="text-6xl mb-4 block">🚫</span>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Không có quyền truy cập</h1>
-        <p className="text-gray-600">Trang này chỉ dành riêng cho Giáo viên (Teacher) và Quản trị viên (Admin).</p>
+        <p className="text-gray-600">Trang này chỉ dành riêng cho Giáo viên, Trợ giảng và Quản trị viên.</p>
       </div>
     );
   }

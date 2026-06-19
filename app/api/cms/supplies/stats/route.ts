@@ -21,7 +21,11 @@ export async function GET(req: Request) {
         item: {
           select: {
             name: true,
-            category: true
+            category: {
+              select: {
+                name: true
+              }
+            }
           }
         }
       }
@@ -40,7 +44,7 @@ export async function GET(req: Request) {
       const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
       monthlyStats[monthKey] = (monthlyStats[monthKey] || 0) + cost;
 
-      const category = tx.item?.category || "Chung";
+      const category = tx.item?.category?.name || "Chung";
       categoryStats[category] = (categoryStats[category] || 0) + cost;
 
       if (tx.itemId) {

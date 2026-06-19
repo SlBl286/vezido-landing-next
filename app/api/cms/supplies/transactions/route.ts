@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { saveBase64File } from "@/lib/image-upload";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -19,7 +20,11 @@ export async function GET(req: Request) {
           select: {
             name: true,
             unit: true,
-            category: true
+            category: {
+              select: {
+                name: true
+              }
+            }
           }
         }
       },
@@ -28,7 +33,15 @@ export async function GET(req: Request) {
       }
     });
 
-    return NextResponse.json({ transactions });
+    const mappedTransactions = transactions.map(tx => ({
+      ...tx,
+      item: tx.item ? {
+        ...tx.item,
+        category: tx.item.category?.name || "Chưa phân loại"
+      } : null
+    }));
+
+    return NextResponse.json({ transactions: mappedTransactions });
   } catch (error) {
     console.error("Error fetching transactions:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -47,7 +60,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { itemId, type, quantity, pricePerUnit, purpose } = body;
+    const { itemId, type, quantity, pricePerUnit, purpose, invoices } = body;
 
     if (!itemId || !type || !quantity) {
       return NextResponse.json({ error: "Vui lòng nhập đầy đủ thông tin: Vật phẩm, Loại giao dịch và Số lượng" }, { status: 400 });
@@ -68,6 +81,20 @@ export async function POST(req: Request) {
     }
 
     const performer = session.user.name || (session.user as any).username || "CMS User";
+
+    // Save invoices if IMPORT and invoices are provided
+    const savedInvoices: string[] = [];
+    if (type === "IMPORT" && invoices && Array.isArray(invoices)) {
+      for (let i = 0; i < invoices.length; i++) {
+        const fileData = invoices[i];
+        try {
+          const savedPath = await saveBase64File(fileData, `invoice-${itemId}-${i}`);
+          savedInvoices.push(savedPath);
+        } catch (uploadError) {
+          console.error("Error saving invoice upload:", uploadError);
+        }
+      }
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const item = await tx.supplyItem.findUnique({
@@ -106,7 +133,8 @@ export async function POST(req: Request) {
           pricePerUnit: price,
           totalCost: total,
           purpose: purpose || "",
-          performedBy: performer
+          performedBy: performer,
+          invoices: savedInvoices
         }
       });
 

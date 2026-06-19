@@ -74,6 +74,7 @@ export default function Home() {
             <div className="relative border-4 border-black bg-white rounded-[40px_20px_35px_15px] p-4 shadow-[12px_12px_0px_rgba(0,0,0,1)] -rotate-1 max-w-sm sm:max-w-md w-full overflow-hidden">
               <Image 
                 src="/logo.png" 
+                loading="eager"
                 alt="Kid painting happily" 
                 width={500}
                 height={500}
@@ -168,7 +169,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto space-y-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="text-left space-y-3">
-              <span className="text-xs bg-rose-100 border-2 border-black rounded-lg px-3 py-1 mb-4 font-black text-rose-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider">
+              <span className="inline-block text-xs bg-rose-100 border-2 border-black rounded-lg px-3 py-1 mb-4 font-black text-rose-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider">
                 Khóa học tiêu biểu
               </span>
               <h2 className="text-3xl md:text-5xl font-black text-gray-900">
@@ -187,7 +188,7 @@ export default function Home() {
             {/* Course 1 */}
             <div className="border-4 border-black bg-white rounded-3xl overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
               <div className="p-6 space-y-4">
-                <span className="text-[10px] bg-blue-100 border-2 border-black px-2 py-0.5 rounded font-black text-blue-800 uppercase tracking-wide">
+                <span className="inline-block text-[10px] bg-blue-100 border-2 border-black px-2 py-0.5 rounded font-black text-blue-800 uppercase tracking-wide">
                   Mầm Non (4-6 tuổi)
                 </span>
                 <h3 className="text-2xl font-black text-gray-900">Khóa Vẽ Sáng Tạo Mầm Non</h3>
@@ -207,9 +208,9 @@ export default function Home() {
             </div>
 
             {/* Course 2 */}
-            <div className="border-4 border-black bg-white rounded-3xl overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between scale-105 border-sky-500 shadow-sky-500/10">
+            <div className="border-4 border-black bg-white rounded-3xl overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between md:scale-105 border-sky-500 shadow-sky-500/10">
               <div className="p-6 space-y-4">
-                <span className="text-[10px] bg-emerald-100 border-2 border-black px-2 py-0.5 rounded font-black text-emerald-800 uppercase tracking-wide">
+                <span className="inline-block text-[10px] bg-emerald-100 border-2 border-black px-2 py-0.5 rounded font-black text-emerald-800 uppercase tracking-wide">
                   Thiếu Nhi (7-9 tuổi)
                 </span>
                 <h3 className="text-2xl font-black text-gray-900">Khóa Màu Nước Nâng Cao</h3>
@@ -231,7 +232,7 @@ export default function Home() {
             {/* Course 3 */}
             <div className="border-4 border-black bg-white rounded-3xl overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
               <div className="p-6 space-y-4">
-                <span className="text-[10px] bg-purple-100 border-2 border-black px-2 py-0.5 rounded font-black text-purple-800 uppercase tracking-wide">
+                <span className="inline-block text-[10px] bg-purple-100 border-2 border-black px-2 py-0.5 rounded font-black text-purple-800 uppercase tracking-wide">
                   Thiếu Niên (10-12 tuổi)
                 </span>
                 <h3 className="text-2xl font-black text-gray-900">Hội Họa Nghệ Sĩ Nhí</h3>

@@ -43,6 +43,16 @@ interface Artwork {
   date: string;
 }
 
+function maskPhone(phone: string) {
+  if (!phone) return "";
+  const cleanPhone = phone.trim();
+  if (cleanPhone.length <= 5) return cleanPhone;
+  const firstTwo = cleanPhone.slice(0, 2);
+  const lastThree = cleanPhone.slice(-3);
+  const mask = "*".repeat(cleanPhone.length - 5);
+  return `${firstTwo}${mask}${lastThree}`;
+}
+
 function PortfolioContent() {
   const searchParams = useSearchParams();
   const studentCodeParam = searchParams.get("studentCode");
@@ -189,7 +199,7 @@ function PortfolioContent() {
                   <p>👶 Tuổi: <span className="font-bold text-gray-900">{student.studentAge} tuổi</span></p>
                   <p>🔑 Mã số: <span className="font-black text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">{student.studentCode}</span></p>
                   <p>👩‍👦 Phụ huynh: <span className="font-bold text-gray-900">{student.parentName}</span></p>
-                  <p>📞 Điện thoại: <span className="font-bold text-gray-900">{student.parentPhone}</span></p>
+                  <p>📞 Điện thoại: <span className="font-bold text-gray-900">{maskPhone(student.parentPhone)}</span></p>
                 </div>
               </div>
 

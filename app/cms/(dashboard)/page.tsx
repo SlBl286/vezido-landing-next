@@ -36,6 +36,13 @@ export default function CMSDashboard() {
     getSession();
   }, []);
 
+  // Redirect ASSISTANT role to my-classes page
+  useEffect(() => {
+    if (!loadingSession && session && session.user?.role === "ASSISTANT") {
+      router.replace("/cms/my-classes");
+    }
+  }, [loadingSession, session, router]);
+
   // Fetch statistics based on user role
   useEffect(() => {
     async function fetchStats() {
@@ -55,12 +62,16 @@ export default function CMSDashboard() {
           // Fetch classes and calculate student count
           const classesData = await cmsApi.classes.list();
           classesCount = classesData.classes.length;
-          studentsCount = classesData.classes.reduce((sum, c) => sum + (c._count?.students || 0), 0);
+          
+          const studentsData = await cmsApi.students.listAllUnique();
+          studentsCount = studentsData.students.length;
         } else if (role === "TEACHER") {
           // Fetch teacher classes and calculate student count
           const classesData = await cmsApi.classes.listForTeacher();
           classesCount = classesData.classes.length;
-          studentsCount = classesData.classes.reduce((sum, c) => sum + (c._count?.students || 0), 0);
+          
+          const studentsData = await cmsApi.students.listAllUnique();
+          studentsCount = studentsData.students.length;
         }
 
         setStats({ classesCount, teachersCount, studentsCount });

@@ -47,6 +47,7 @@ export const Header = () => {
             <Image
               src="/logo.png"
               alt="Vẽ zì đó"
+              loading="eager"
               width={60}
               height={60}
               className="object-contain"
@@ -57,7 +58,7 @@ export const Header = () => {
               VẼ ZÌ ĐÓ - CMS
             </h1>
             <p className="text-xs sm:text-sm text-gray-800 font-bold">
-              {role === "ADMIN" ? "Hệ thống quản trị Super Admin 👑" : role === "TEACHER" ? "Góc quản lý của Giáo viên 🖌️" : "Hệ thống quản lý giáo vụ"}
+              {role === "ADMIN" ? "Hệ thống quản trị Super Admin 👑" : role === "TEACHER" ? "Góc quản lý của Giáo viên 🖌️" : role === "ASSISTANT" ? "Góc quản lý của Trợ giảng 📋" : "Hệ thống quản lý giáo vụ"}
             </p>
           </div>
         </div>

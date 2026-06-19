@@ -16,6 +16,7 @@ enum Role {
   USER
   ADMIN
   TEACHER
+  ASSISTANT
 }
 
 model User {
@@ -165,6 +166,13 @@ model Faq {
   updatedAt DateTime @updatedAt
 }
 
+model FaqCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model StudentArtwork {
   id           String        @id @default(cuid())
   studentCode  String        // Mã học sinh để liên kết
@@ -192,17 +200,28 @@ model ContactSubmission {
   updatedAt DateTime @updatedAt
 }
 
+model SupplyCategory {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  items     SupplyItem[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
 model SupplyItem {
   id           String              @id @default(cuid())
   name         String              @unique // Tên họa cụ / đồ dùng
-  category     String              // Họa cụ, Văn phòng phẩm, Dọn dẹp, Thiết bị...
+  categoryId   String?
+  category     SupplyCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   quantity     Int                 @default(0) // Số lượng hiện tại trong kho
   minQuantity  Int                 @default(5) // Ngưỡng cảnh báo sắp hết
   unit         String              // Đơn vị tính: Cái, Hộp, Chai, Tờ...
+  purchaseLink String?             // Link mua sản phẩm
   transactions SupplyTransaction[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 }
+
 
 model SupplyTransaction {
   id           String     @id @default(cuid())
@@ -214,6 +233,7 @@ model SupplyTransaction {
   totalCost    Float?     // Tổng chi phí = quantity * pricePerUnit (chỉ có khi IMPORT)
   purpose      String?    // Lý do xuất dùng hoặc ghi chú nhập kho
   performedBy  String?    // Người thực hiện (tên giáo viên/admin)
+  invoices     String[]   // Danh sách file hóa đơn tải lên (PDF/Ảnh)
   date         DateTime   @default(now())
   createdAt    DateTime   @default(now())
 }
@@ -226,6 +246,8 @@ model Task {
   assignedTeacherId String?          // Phân công cụ thể cho giáo viên nào (Null = tất cả)
   assignedTeacher   Teacher?         @relation(fields: [assignedTeacherId], references: [id], onDelete: Cascade)
   completions       TaskCompletion[]
+  reward            String?          // Thưởng
+  penalty           String?          // Phạt
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 }

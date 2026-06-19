@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
-    const category = searchParams.get("category") || "";
+    const categoryId = searchParams.get("categoryId") || "";
     const filterLowStock = searchParams.get("lowStock") === "true";
 
     const supplies = await prisma.supplyItem.findMany({
@@ -24,20 +24,31 @@ export async function GET(req: Request) {
           search ? {
             name: { contains: search, mode: "insensitive" }
           } : {},
-          category ? {
-            category: category
+          categoryId ? {
+            categoryId: categoryId
           } : {}
         ]
+      },
+      include: {
+        category: true
       },
       orderBy: {
         name: "asc"
       }
     });
 
+    // Map the relational category to string category for backward compatibility,
+    // and also include categoryId for frontend editing select box prefilling
+    const mappedSupplies = supplies.map(item => ({
+      ...item,
+      categoryId: item.categoryId,
+      category: item.category?.name || "Chưa phân loại"
+    }));
+
     // Filter by low stock in-memory because Prisma doesn't support field-to-field comparison natively
     const result = filterLowStock
-      ? supplies.filter(item => item.quantity <= item.minQuantity)
-      : supplies;
+      ? mappedSupplies.filter(item => item.quantity <= item.minQuantity)
+      : mappedSupplies;
 
     return NextResponse.json({ supplies: result });
   } catch (error) {
@@ -54,10 +65,10 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, category, unit, minQuantity, initialQuantity } = body;
+    const { name, categoryId, unit, minQuantity, initialQuantity, purchaseLink } = body;
 
-    if (!name || !category || !unit) {
-      return NextResponse.json({ error: "Tên, Phân loại và Đơn vị không được để trống" }, { status: 400 });
+    if (!name || !categoryId || !unit) {
+      return NextResponse.json({ error: "Tên, Danh mục và Đơn vị không được để trống" }, { status: 400 });
     }
 
     // Check unique name
@@ -75,10 +86,11 @@ export async function POST(req: Request) {
     const supply = await prisma.supplyItem.create({
       data: {
         name,
-        category,
+        categoryId,
         unit,
         minQuantity: minQtyVal,
         quantity: initQtyVal,
+        purchaseLink: purchaseLink || null,
         ...(initQtyVal > 0 ? {
           transactions: {
             create: {
@@ -114,10 +126,10 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { name, category, unit, minQuantity } = body;
+    const { name, categoryId, unit, minQuantity, purchaseLink } = body;
 
-    if (!name || !category || !unit) {
-      return NextResponse.json({ error: "Tên, Phân loại và Đơn vị không được để trống" }, { status: 400 });
+    if (!name || !categoryId || !unit) {
+      return NextResponse.json({ error: "Tên, Danh mục và Đơn vị không được để trống" }, { status: 400 });
     }
 
     // Check unique name excluding this item
@@ -135,9 +147,10 @@ export async function PUT(req: Request) {
       where: { id },
       data: {
         name,
-        category,
+        categoryId,
         unit,
-        minQuantity: minQuantity !== undefined ? Number(minQuantity) : 5
+        minQuantity: minQuantity !== undefined ? Number(minQuantity) : 5,
+        purchaseLink: purchaseLink || null
       }
     });
 
@@ -172,3 +185,4 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+

@@ -7,10 +7,27 @@ export const metadata: Metadata = {
   description: "Lịch các lớp học vẽ online và offline",
 };
 
-export default async function Schedule() {
-  const now = new Date();
+interface ScheduleProps {
+  searchParams: Promise<{ date?: string }>;
+}
+
+export default async function Schedule({ searchParams }: ScheduleProps) {
+  const params = await searchParams;
+  const dateParam = params.date;
+
+  let now = new Date();
+  if (dateParam) {
+    const parts = dateParam.split("-");
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      // set to noon ICT to avoid timezone jumps
+      now = new Date(year, month, day, 12, 0, 0);
+    }
+  }
   
-  // Calculate Monday and Sunday of current week in local time
+  // Calculate Monday and Sunday of selected week in local time
   const currentDay = now.getDay();
   const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
   
@@ -75,8 +92,16 @@ export default async function Schedule() {
     return `${day}/${month}/${year}`;
   };
 
+  const formatLocalDateForParam = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const startDateStr = formatLocalDate(monday);
   const endDateStr = formatLocalDate(sunday);
+  const currentMondayStr = formatLocalDateForParam(monday);
 
   return (
     <main className="flex flex-col items-center flex-1 text-center bg-[radial-gradient(circle_at_2px_2px,#bec7d1_1px,transparent_0)] bg-[size:24px_24px] pb-12 w-full">
@@ -85,6 +110,7 @@ export default async function Schedule() {
           initialSessions={serializedSessions as any}
           startDateStr={startDateStr}
           endDateStr={endDateStr}
+          currentMondayStr={currentMondayStr}
         />
       </div>
     </main>

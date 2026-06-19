@@ -36,7 +36,9 @@ export const Sidebar = ({ role }: SidebarProps) => {
       label: "Chung",
       icon: "🏠",
       items: [
-        { id: "overview", href: "/cms", label: "Tổng quan", icon: "📊", color: "bg-[#bae1ff]" },
+        ...(role !== "ASSISTANT" ? [
+          { id: "overview", href: "/cms", label: "Tổng quan", icon: "📊", color: "bg-[#bae1ff]" }
+        ] : []),
         { id: "profile", href: "/cms/profile", label: "Hồ sơ cá nhân", icon: "⚙️", color: "bg-[#dcd6f7]" },
         { id: "tasks", href: "/cms/tasks", label: "Nhiệm vụ & Công việc", icon: "📋", color: "bg-[#a8e6cf]" }
       ]
@@ -46,11 +48,13 @@ export const Sidebar = ({ role }: SidebarProps) => {
       label: "Đào tạo & Lớp học",
       icon: "📚",
       items: [
-        { id: "schedule", href: "/cms/schedule", label: "Lịch học & Giảng dạy", icon: "📅", color: "bg-[#ffd3b6]" },
         ...(role === "ADMIN" ? [
           { id: "teachers", href: "/cms/teachers", label: "Quản lý Giáo viên", icon: "👩‍🏫", color: "bg-[#ffd275]" },
           { id: "classes", href: "/cms/classes", label: "Quản lý Lớp học", icon: "🏫", color: "bg-[#ff8b94]" },
           { id: "specialties", href: "/cms/specialties", label: "Quản lý Chuyên môn", icon: "🎨", color: "bg-[#ffffba]" }
+        ] : []),
+        ...(role !== "ASSISTANT" ? [
+          { id: "schedule", href: "/cms/schedule", label: "Lịch học & Giảng dạy", icon: "📅", color: "bg-[#ffd3b6]" }
         ] : []),
         { id: "my-classes", href: "/cms/my-classes", label: "Lớp học của tôi", icon: "🎨", color: "bg-[#baffc9]" }
       ]
@@ -60,7 +64,10 @@ export const Sidebar = ({ role }: SidebarProps) => {
       label: "Triển lãm & Học sinh",
       icon: "🎨",
       items: [
-        { id: "artworks", href: "/cms/artworks", label: "Góc Triển Lãm & Nhận Xét", icon: "🖼️", color: "bg-[#ffc6ff]" }
+        ...(role !== "ASSISTANT" ? [
+          { id: "artworks", href: "/cms/artworks", label: "Góc Triển Lãm & Nhận Xét", icon: "🖼️", color: "bg-[#ffc6ff]" },
+          { id: "students", href: "/cms/students", label: "Danh sách Học sinh", icon: "🎒", color: "bg-[#ffd275]" }
+        ] : [])
       ]
     },
     {
@@ -71,7 +78,9 @@ export const Sidebar = ({ role }: SidebarProps) => {
         ...(role === "ADMIN" ? [
           { id: "contacts", href: "/cms/contacts", label: "Liên hệ từ website", icon: "📬", color: "bg-[#baffc9]" }
         ] : []),
-        { id: "supplies", href: "/cms/supplies", label: "Quản lý Kho hàng", icon: "📦", color: "bg-[#ffffba]" },
+        ...(role !== "ASSISTANT" ? [
+          { id: "supplies", href: "/cms/supplies", label: "Quản lý Kho hàng", icon: "📦", color: "bg-[#ffffba]" }
+        ] : []),
         { id: "faqs", href: "/cms/faqs", label: "Hỏi đáp & Trả lời nhanh", icon: "💬", color: "bg-[#e8dff5]" }
       ]
     }

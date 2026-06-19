@@ -382,6 +382,11 @@ export default function TeachersPage() {
                             Admin 👑
                           </span>
                         )}
+                        {teacher.user.role === "ASSISTANT" && (
+                          <span className="bg-blue-100 text-blue-800 text-[10px] font-black border border-blue-300 rounded px-1.5 py-0.5 whitespace-nowrap">
+                            Trợ giảng 📋
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -513,6 +518,7 @@ export default function TeachersPage() {
                     onChange={(val) => setTeacherForm({ ...teacherForm, role: val })}
                     options={[
                       { value: "TEACHER", label: "Giáo viên 👩‍🏫" },
+                      { value: "ASSISTANT", label: "Trợ giảng 📋" },
                       { value: "ADMIN", label: "Quản trị viên & Giáo viên 👑" }
                     ]}
                   />
@@ -685,6 +691,7 @@ export default function TeachersPage() {
                     onChange={(val) => setEditTeacherForm({ ...editTeacherForm, role: val })}
                     options={[
                       { value: "TEACHER", label: "Giáo viên 👩‍🏫" },
+                      { value: "ASSISTANT", label: "Trợ giảng 📋" },
                       { value: "ADMIN", label: "Quản trị viên & Giáo viên 👑" }
                     ]}
                   />

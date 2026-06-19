@@ -112,7 +112,9 @@ export async function GET(
         description: task.description || "",
         frequency: task.frequency,
         isCompleted: !!completion,
-        notes: completion?.notes || ""
+        notes: completion?.notes || "",
+        reward: task.reward,
+        penalty: task.penalty
       };
     });
 
@@ -148,7 +150,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const role = (session.user as any).role;
-  if (role !== "ADMIN" && role !== "TEACHER") {
+  if (role !== "ADMIN" && role !== "TEACHER" && role !== "ASSISTANT") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

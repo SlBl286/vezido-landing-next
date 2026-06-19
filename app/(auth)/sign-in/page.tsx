@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Lock, User, Paintbrush, Sparkles, Smile, ArrowRight, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
-
 export default function SignInPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");

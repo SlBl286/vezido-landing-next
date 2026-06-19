@@ -11,7 +11,7 @@ export async function GET() {
   const userId = (session.user as any).id;
   const role = (session.user as any).role;
 
-  if (role !== "TEACHER" && role !== "ADMIN") {
+  if (role !== "TEACHER" && role !== "ADMIN" && role !== "ASSISTANT") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

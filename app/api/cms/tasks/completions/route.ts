@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   }
 
   const role = (session.user as any).role;
-  if (role !== "ADMIN" && role !== "TEACHER") {
+  if (role !== "ADMIN" && role !== "TEACHER" && role !== "ASSISTANT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     let whereClause: any = {};
 
     // 1. Role checks
-    if (role === "TEACHER") {
+    if (role === "TEACHER" || role === "ASSISTANT") {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId: session.user.id }
       });
@@ -95,7 +95,9 @@ export async function GET(req: Request) {
       sessionDate: c.session?.date || null,
       completedAt: c.completedAt,
       notes: c.notes || "",
-      status: c.status
+      status: c.status,
+      reward: c.task.reward,
+      penalty: c.task.penalty
     }));
 
     return NextResponse.json({ completions: formatted });
@@ -113,7 +115,7 @@ export async function POST(req: Request) {
   }
 
   const role = (session.user as any).role;
-  if (role !== "ADMIN" && role !== "TEACHER") {
+  if (role !== "ADMIN" && role !== "TEACHER" && role !== "ASSISTANT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

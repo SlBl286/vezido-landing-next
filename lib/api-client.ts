@@ -155,6 +155,7 @@ export const cmsApi = {
   
   students: {
     list: (classId: string) => fetchJson<StudentsGetResponse>(`/api/cms/students?classId=${classId}`),
+    listAllUnique: () => fetchJson<StudentsGetResponse>("/api/cms/students?allUnique=true"),
     
     enroll: (data: StudentEnrollInput) => fetchJson<StudentsPostResponse>("/api/cms/students", {
       method: "POST",
@@ -205,7 +206,6 @@ export const cmsApi = {
       body: JSON.stringify(data),
     })
   },
-
   faqs: {
     list: (search?: string) => fetchJson<{ faqs: any[] }>(`/api/cms/faqs${search ? `?search=${encodeURIComponent(search)}` : ""}`),
     create: (data: { question: string; answer: string; category?: string }) => fetchJson<{ faq: any }>("/api/cms/faqs", {
@@ -221,8 +221,16 @@ export const cmsApi = {
     delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/faqs?id=${id}`, {
       method: "DELETE",
     }),
+    listCategories: () => fetchJson<{ categories: any[] }>("/api/cms/faqs/categories"),
+    createCategory: (data: { name: string }) => fetchJson<{ category: any }>("/api/cms/faqs/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    deleteCategory: (id: string) => fetchJson<{ message: string }>(`/api/cms/faqs/categories?id=${id}`, {
+      method: "DELETE",
+    }),
   },
-
   artworks: {
     list: (params: { studentCode?: string } = {}) => {
       const query = new URLSearchParams();
@@ -251,12 +259,12 @@ export const cmsApi = {
       if (params.teacherId) query.append("teacherId", params.teacherId);
       return fetchJson<{ tasks: any[]; teacherId?: string }>(`/api/cms/tasks?${query.toString()}`);
     },
-    create: (data: { title: string; description?: string | null; frequency: string; assignedTeacherId?: string | null }) => fetchJson<{ task: any }>("/api/cms/tasks", {
+    create: (data: { title: string; description?: string | null; frequency: string; assignedTeacherId?: string | null; reward?: string | null; penalty?: string | null }) => fetchJson<{ task: any }>("/api/cms/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
-    update: (id: string, data: { title: string; description?: string | null; frequency: string; assignedTeacherId?: string | null }) => fetchJson<{ task: any }>(`/api/cms/tasks?id=${id}`, {
+    update: (id: string, data: { title: string; description?: string | null; frequency: string; assignedTeacherId?: string | null; reward?: string | null; penalty?: string | null }) => fetchJson<{ task: any }>(`/api/cms/tasks?id=${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

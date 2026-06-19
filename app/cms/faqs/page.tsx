@@ -5,10 +5,11 @@ import { cmsApi } from "@/lib/api-client";
 import { AuthSession } from "@/lib/types/api";
 import { createPortal } from "react-dom";
 import { 
-  Search, Copy, Plus, Edit, Trash2, Check, Loader2, X, HelpCircle, Info, MessagesSquare
+  Search, Copy, Plus, Edit, Trash2, Check, Loader2, X, HelpCircle, Info, MessagesSquare, ChevronDown
 } from "lucide-react";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
+import { ManageCategoriesModal } from "@/app/cms/components/modals/ManageCategoriesModal";
 
 interface FAQ {
   id: string;
@@ -18,8 +19,6 @@ interface FAQ {
   createdAt: string;
   updatedAt: string;
 }
-
-const CATEGORIES = ["Chung", "Học phí", "Lịch học", "Đăng ký", "Khác"];
 
 const getCategoryStyle = (category: string) => {
   switch (category) {
@@ -42,6 +41,17 @@ export default function FaqsPage() {
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loadingFaqs, setLoadingFaqs] = useState(true);
   
+  // Dynamic categories state
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([
+    { id: "default-1", name: "Chung" },
+    { id: "default-2", name: "Học phí" },
+    { id: "default-3", name: "Lịch học" },
+    { id: "default-4", name: "Đăng ký" },
+    { id: "default-5", name: "Khác" }
+  ]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
+  
   // Filtering & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
@@ -53,6 +63,9 @@ export default function FaqsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedFaq, setSelectedFaq] = useState<FAQ | null>(null);
+
+  // Expanded FAQ state for accordion
+  const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
 
   // Form states
   const [formQuestion, setFormQuestion] = useState("");
@@ -92,12 +105,18 @@ export default function FaqsPage() {
     });
   };
 
-  // Load User Session & FAQs
+  // Collapse open FAQ when search or category changes
+  useEffect(() => {
+    setExpandedFaqId(null);
+  }, [searchQuery, selectedCategory]);
+
+  // Load User Session, FAQs, and Categories
   useEffect(() => {
     async function init() {
       try {
         const sessionData = await cmsApi.auth.getSession();
         setSession(sessionData);
+        await Promise.all([fetchFaqs(), fetchCategories()]);
       } catch (err) {
         console.error("Failed to load session:", err);
       } finally {
@@ -120,11 +139,17 @@ export default function FaqsPage() {
     }
   };
 
-  useEffect(() => {
-    if (!loadingSession && session) {
-      fetchFaqs();
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const data = await cmsApi.faqs.listCategories();
+      setCategories(data.categories || []);
+    } catch (err) {
+      console.error("Failed to load FAQ categories:", err);
+    } finally {
+      setLoadingCategories(false);
     }
-  }, [loadingSession, session]);
+  };
 
   const handleCopy = async (id: string, text: string) => {
     let copySuccess = false;
@@ -293,23 +318,31 @@ export default function FaqsPage() {
         </div>
 
         {isAdmin && (
-          <button
-            onClick={() => {
-              setFormQuestion("");
-              setFormAnswer("");
-              setFormCategory("Chung");
-              setIsAddOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-5 py-3 border-3 border-black bg-[#baffc9] hover:bg-[#a3e9b3] rounded-2xl text-sm font-black transition-all shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer shrink-0 self-start sm:self-center"
-          >
-            <Plus className="w-4 h-4 text-black" />
-            Thêm câu hỏi mới
-          </button>
+          <div className="flex flex-wrap gap-2 shrink-0 self-start sm:self-center">
+            <button
+              onClick={() => setIsManageCategoriesOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-3 border-3 border-black bg-[#bae1ff] hover:bg-[#a2d4fc] rounded-2xl text-sm font-black transition-all shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+            >
+              📁 Quản lý danh mục
+            </button>
+            <button
+              onClick={() => {
+                setFormQuestion("");
+                setFormAnswer("");
+                setFormCategory("Chung");
+                setIsAddOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-5 py-3 border-3 border-black bg-[#baffc9] hover:bg-[#a3e9b3] rounded-2xl text-sm font-black transition-all shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-black" />
+              Thêm câu hỏi mới
+            </button>
+          </div>
         )}
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         
         {/* Search */}
         <div className="relative flex-1 max-w-md">
@@ -333,17 +366,17 @@ export default function FaqsPage() {
           >
             📚 Tất cả ({faqs.length})
           </button>
-          {CATEGORIES.map((cat) => {
-            const count = faqs.filter(f => f.category === cat).length;
+          {categories.map((cat) => {
+            const count = faqs.filter(f => f.category === cat.name).length;
             return (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.name)}
                 className={`px-4 py-2 border-2 border-black rounded-xl text-xs font-black transition-all cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 ${
-                  selectedCategory === cat ? "bg-amber-300 text-black" : "bg-white hover:bg-gray-50 text-gray-600"
+                  selectedCategory === cat.name ? "bg-amber-300 text-black" : "bg-white hover:bg-gray-50 text-gray-600"
                 }`}
               >
-                {cat} ({count})
+                {cat.name} ({count})
               </button>
             );
           })}
@@ -369,76 +402,97 @@ export default function FaqsPage() {
             return (
               <div 
                 key={faq.id}
-                className="border-4 border-black bg-white rounded-[30px_10px_25px_10px/10px_25px_10px_30px] p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-3 relative group transition-all"
+                className={`border-4 border-black bg-white rounded-[30px_10px_25px_10px/10px_25px_10px_30px] p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between group transition-all ${
+                  expandedFaqId === faq.id ? "h-auto" : "h-[250px] sm:h-[230px]"
+                }`}
               >
-                {/* FAQ Top Actions Row */}
-                <div className="flex justify-between items-center">
-                  <span className={`text-[10px] border-2 border-black px-2 py-0.5 rounded-lg font-black uppercase tracking-wider ${getCategoryStyle(faq.category)}`}>
-                    {faq.category}
-                  </span>
-                  
-                  <div className="flex items-center gap-1.5">
-                    {/* Copy button */}
-                    <button
-                      onClick={() => handleCopy(faq.id, faq.answer)}
-                      className={`flex items-center gap-1 px-3 py-1.5 border-2 border-black rounded-lg text-[10px] font-black transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer ${
-                        isCopied ? "bg-emerald-200 text-emerald-800" : "bg-sky-150 hover:bg-sky-200 text-gray-700 bg-sky-50"
-                      }`}
-                      title="Sao chép câu trả lời mẫu"
-                    >
-                      {isCopied ? (
+                <div className="space-y-3 overflow-hidden flex flex-col justify-start">
+                  {/* FAQ Top Actions Row */}
+                  <div className="flex justify-between items-center shrink-0">
+                    <span className={`text-[10px] border-2 border-black px-2 py-0.5 rounded-lg font-black uppercase tracking-wider ${getCategoryStyle(faq.category)}`}>
+                      {faq.category}
+                    </span>
+                    
+                    <div className="flex items-center gap-1.5">
+                      {/* Copy button */}
+                      <button
+                        onClick={() => handleCopy(faq.id, faq.answer)}
+                        className={`flex items-center gap-1 px-3 py-1.5 border-2 border-black rounded-lg text-[10px] font-black transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer ${
+                          isCopied ? "bg-emerald-200 text-emerald-800" : "bg-sky-150 hover:bg-sky-200 text-gray-700 bg-sky-50"
+                        }`}
+                        title="Sao chép câu trả lời mẫu"
+                      >
+                        {isCopied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Đã copy
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy mẫu
+                          </>
+                        )}
+                      </button>
+
+                      {/* Admin actions */}
+                      {isAdmin && (
                         <>
-                          <Check className="w-3.5 h-3.5" />
-                          Đã copy
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          Copy mẫu
+                          <button
+                            onClick={() => handleOpenEdit(faq)}
+                            className="p-1.5 border-2 border-black bg-amber-100 hover:bg-amber-200 rounded-lg text-gray-700 hover:text-black transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                            title="Chỉnh sửa hỏi đáp"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(faq)}
+                            className="p-1.5 border-2 border-black bg-rose-100 hover:bg-rose-200 rounded-lg text-rose-700 hover:text-rose-900 transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                            title="Xóa câu hỏi"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </>
                       )}
-                    </button>
+                    </div>
+                  </div>
 
-                    {/* Admin actions */}
-                    {isAdmin && (
-                      <>
-                        <button
-                          onClick={() => handleOpenEdit(faq)}
-                          className="p-1.5 border-2 border-black bg-amber-100 hover:bg-amber-200 rounded-lg text-gray-700 hover:text-black transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
-                          title="Chỉnh sửa hỏi đáp"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(faq)}
-                          className="p-1.5 border-2 border-black bg-rose-100 hover:bg-rose-200 rounded-lg text-rose-700 hover:text-rose-900 transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
-                          title="Xóa câu hỏi"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </>
+                  {/* FAQ Question */}
+                  <div 
+                    onClick={() => setExpandedFaqId(expandedFaqId === faq.id ? null : faq.id)}
+                    className="flex items-start justify-between gap-2 cursor-pointer select-none py-1 group/q text-left shrink-0"
+                  >
+                    <h4 className="text-sm font-black text-black leading-snug flex-1 group-hover/q:text-amber-500 transition-colors">
+                      ❓ {faq.question}
+                    </h4>
+                    <ChevronDown 
+                      className={`w-5 h-5 text-black shrink-0 transition-transform duration-200 ${
+                        expandedFaqId === faq.id ? "rotate-180" : ""
+                      }`} 
+                    />
+                  </div>
+
+                  {/* FAQ Answer container (Copyable by clicking inside) */}
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopy(faq.id, faq.answer);
+                    }}
+                    className={`bg-gray-50 border-2 border-black p-3.5 rounded-2xl text-gray-700 text-xs font-semibold whitespace-pre-wrap select-all cursor-pointer hover:bg-amber-50/20 active:bg-amber-50/40 transition-all relative group/box ${
+                      expandedFaqId === faq.id ? "" : "line-clamp-3"
+                    }`}
+                    title="Click để sao chép nhanh câu trả lời này"
+                  >
+                    {faq.answer}
+                    {expandedFaqId === faq.id && (
+                      <div className="absolute right-3 bottom-3 opacity-0 group-hover/box:opacity-60 transition-opacity flex items-center gap-1 text-[9px] text-gray-500 font-black uppercase">
+                        <Copy className="w-3 h-3" /> Click để copy nhanh
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* FAQ Question */}
-                <h4 className="text-sm font-black text-black leading-snug">
-                  ❓ {faq.question}
-                </h4>
-
-                {/* FAQ Answer container (Copyable by clicking inside) */}
-                <div 
-                  onClick={() => handleCopy(faq.id, faq.answer)}
-                  className="bg-gray-50 border-2 border-black p-3.5 rounded-2xl text-gray-700 text-xs font-semibold whitespace-pre-wrap select-all cursor-pointer hover:bg-amber-50/20 active:bg-amber-50/40 transition-colors relative group/box"
-                  title="Click để sao chép nhanh câu trả lời này"
-                >
-                  {faq.answer}
-                  <div className="absolute right-3 bottom-3 opacity-0 group-hover/box:opacity-60 transition-opacity flex items-center gap-1 text-[9px] text-gray-500 font-black uppercase">
-                    <Copy className="w-3 h-3" /> Click để copy nhanh
-                  </div>
-                </div>
-
-                <div className="text-[9px] text-gray-400 font-bold italic pt-1 text-right">
+                <div className="text-[9px] text-gray-400 font-bold italic pt-1 text-right mt-2 shrink-0">
                   Cập nhật: {new Date(faq.updatedAt).toLocaleDateString("vi-VN", { day: "numeric", month: "numeric", year: "numeric" })}
                 </div>
               </div>
@@ -491,7 +545,7 @@ export default function FaqsPage() {
                 <CustomSelect
                   value={formCategory}
                   onChange={(val) => setFormCategory(val)}
-                  options={CATEGORIES.map(cat => ({ value: cat, label: cat }))}
+                  options={categories.map(cat => ({ value: cat.name, label: cat.name }))}
                 />
               </div>
 
@@ -579,7 +633,7 @@ export default function FaqsPage() {
                 <CustomSelect
                   value={formCategory}
                   onChange={(val) => setFormCategory(val)}
-                  options={CATEGORIES.map(cat => ({ value: cat, label: cat }))}
+                  options={categories.map(cat => ({ value: cat.name, label: cat.name }))}
                 />
               </div>
 
@@ -634,6 +688,13 @@ export default function FaqsPage() {
         message={notification.message}
         type={notification.type}
         onConfirm={notification.onConfirm}
+      />
+
+      {/* MODAL: MANAGE CATEGORIES */}
+      <ManageCategoriesModal
+        isOpen={isManageCategoriesOpen}
+        onClose={() => setIsManageCategoriesOpen(false)}
+        onCategoriesChange={fetchCategories}
       />
 
     </div>
