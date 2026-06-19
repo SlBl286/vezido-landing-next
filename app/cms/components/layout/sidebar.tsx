@@ -51,6 +51,7 @@ export const Sidebar = ({ role }: SidebarProps) => {
         ...(role === "ADMIN" ? [
           { id: "teachers", href: "/cms/teachers", label: "Quản lý Giáo viên", icon: "👩‍🏫", color: "bg-[#ffd275]" },
           { id: "classes", href: "/cms/classes", label: "Quản lý Lớp học", icon: "🏫", color: "bg-[#ff8b94]" },
+          { id: "courses", href: "/cms/courses", label: "Quản lý Khóa học", icon: "📖", color: "bg-[#a8e6cf]" },
           { id: "specialties", href: "/cms/specialties", label: "Quản lý Chuyên môn", icon: "🎨", color: "bg-[#ffffba]" }
         ] : []),
         ...(role !== "ASSISTANT" ? [
@@ -76,6 +77,7 @@ export const Sidebar = ({ role }: SidebarProps) => {
       icon: "🛠️",
       items: [
         ...(role === "ADMIN" ? [
+          { id: "settings", href: "/cms/settings", label: "Cấu hình Website", icon: "🌐", color: "bg-[#ffc6ff]" },
           { id: "contacts", href: "/cms/contacts", label: "Liên hệ từ website", icon: "📬", color: "bg-[#baffc9]" }
         ] : []),
         ...(role !== "ASSISTANT" ? [

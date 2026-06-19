@@ -26,3 +26,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Avoid hardcoding options, texts, statuses, and options.
 - Keep components as dynamic as possible (use variables, configurations, properties, or state).
 
+## 5. Database Schema Changes & Migrations
+- **ALWAYS** generate a database migration when modifying `prisma/schema.prisma`.
+- Run `bun prisma migrate dev --name <migration_name>` to generate and apply migrations locally and create migration files.
+- **NEVER** use `prisma db push` directly for production schema changes without generating migration files.
+
+

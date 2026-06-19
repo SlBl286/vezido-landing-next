@@ -29,7 +29,7 @@ export const Footer = () => {
             {/* Social */}
             <div className="flex gap-3 pt-2">
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/vezido"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 bg-white/10 hover:bg-blue-600 border border-white/20 rounded-lg flex items-center justify-center transition-all"
@@ -139,10 +139,11 @@ export const Footer = () => {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2 text-[11px] font-semibold text-gray-500">
           <p>© {currentYear} Vẽ zì đó. All rights reserved.</p>
           <div className="flex items-center gap-1.5">
-            <img
+            <Image
               src="/nhan_vat.png"
               alt="mascot"
               width={28}
+              height={28}
               className="object-contain  opacity-50"
             />
             <span>Nuôi dưỡng đam mê nghệ thuật ❤️</span>

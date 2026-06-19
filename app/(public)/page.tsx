@@ -1,16 +1,72 @@
 import { Metadata } from "next";
 import { 
-  Palette, Sparkles, BookOpen, Heart, ArrowRight, Star, Award, ShieldCheck, CheckCircle2 
+  Palette, Sparkles, BookOpen, Heart, ArrowRight, Star, Award, ShieldCheck, CheckCircle2, UserCheck, Image as ImageIcon
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { prisma } from "@/lib/prisma";
+
+interface Teacher {
+  name: string;
+  role: string;
+  avatar: string;
+  achievements?: string[];
+}
 
 export const metadata: Metadata = {
   title: "Vẽ zì đó - Lớp học vẽ sáng tạo cho trẻ em 🎨",
   description: "Nuôi dưỡng đam mê nghệ thuật và kích hoạt tư duy sáng tạo của bé với giáo trình chuẩn, lớp học sinh động và cổng theo dõi kết quả trực quan.",
 };
 
-export default function Home() {
+export default async function Home() {
+  // Fetch site settings
+  const dbSettings = await prisma.siteSetting.findMany();
+  const settings = dbSettings.reduce((acc, curr) => {
+    acc[curr.key] = curr.value;
+    return acc;
+  }, {} as Record<string, string>);
+
+  // Fetch active courses
+  const dbCourses = await prisma.course.findMany({
+    where: { isActive: true },
+    orderBy: { createdAt: "asc" }
+  });
+
+  // Parse JSON configs with fallbacks
+  const heroTitle = settings.hero_title || "Đánh thức sáng tạo cùng Vẽ zì đó!";
+  const heroDescription = settings.hero_description || "Khám phá thế giới màu sắc đầy niềm vui và nuôi dưỡng năng khiếu hội họa cho bé từ 4-15 tuổi. Phương pháp giáo dục hiện đại giúp bé tự tin thể hiện cá tính riêng.";
+  const aboutText = settings.about_text || "“VẼ ZÌ ĐÓ” là một dự nơi đặc biệt dành cho các bạn nhỏ yêu thích sáng tạo nghệ thuật...";
+  const aboutImage = settings.about_image || "/info/726336653_1665133681457496_715771583886802936_n.jpg";
+
+  let stats = [
+    { count: "150+", label: "HỌC VIÊN ĐANG THEO HỌC" },
+    { count: "12+", label: "LỚP HỌC MỞ HÀNG TUẦN" },
+    { count: "5+", label: "CHUYÊN ĐỀ HỘI HỌA ĐA DẠNG" },
+    { count: "100%", label: "BÉ PHÁT TRIỂN SÁNG TẠO" }
+  ];
+  if (settings.stats) {
+    try { stats = JSON.parse(settings.stats); } catch (_) {}
+  }
+
+  let benefits = [
+    { title: "Giáo Trình Sáng Tạo Tự Do", description: "Các bài học được nghiên cứu chuyên sâu, lồng ghép kể chuyện, trò chơi kích thích óc sáng tạo thay vì rập khuôn sao chép mẫu vẽ.", color: "bg-sky-200" },
+    { title: "Giáo Viên Chuẩn Mỹ Thuật", description: "Đội ngũ thầy cô tốt nghiệp các trường Đại học Mỹ thuật uy tín, có kỹ năng sư phạm mầm non và tràn đầy kiên nhẫn, tình yêu trẻ nhỏ.", color: "bg-amber-200" },
+    { title: "Theo Dõi Kết Quả Trực Quan", description: "Cổng thông tin phụ huynh tích hợp xem chi tiết số buổi học, chuyên cần và triển lãm các tác phẩm tranh vẽ kèm nhận xét từ giáo viên qua Mã học viên.", color: "bg-purple-200" }
+  ];
+  if (settings.benefits) {
+    try { benefits = JSON.parse(settings.benefits); } catch (_) {}
+  }
+
+  let teachers = [];
+  if (settings.teachers) {
+    try { teachers = JSON.parse(settings.teachers); } catch (_) {}
+  }
+
+  let galleryImages = [];
+  if (settings.gallery_images) {
+    try { galleryImages = JSON.parse(settings.gallery_images); } catch (_) {}
+  }
+
   return (
     <main className="min-h-screen bg-[#fefaf0] overflow-hidden">
       
@@ -28,14 +84,14 @@ export default function Home() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-black text-gray-900 leading-[1.1] tracking-tight">
-              Đánh thức sáng tạo <br className="hidden md:inline"/>
+              {heroTitle.split(" cùng ")[0]} <br className="hidden md:inline"/>
               <span className="bg-amber-300 border-4 border-black px-3 py-1 inline-block rounded-xl shadow-[5px_5px_0px_rgba(0,0,0,1)] rotate-1 mt-2">
-                cùng Vẽ zì đó!
+                cùng {heroTitle.split(" cùng ")[1] || "Vẽ zì đó!"}
               </span>
             </h1>
 
             <p className="text-gray-600 font-bold text-base md:text-lg max-w-xl leading-relaxed">
-              Khám phá thế giới màu sắc đầy niềm vui và nuôi dưỡng năng khiếu hội họa cho bé từ 4-12 tuổi. Phương pháp giáo dục hiện đại giúp bé tự tin thể hiện cá tính riêng.
+              {heroDescription}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
@@ -73,18 +129,18 @@ export default function Home() {
           <div className="lg:col-span-5 relative flex justify-center">
             <div className="relative border-4 border-black bg-white rounded-[40px_20px_35px_15px] p-4 shadow-[12px_12px_0px_rgba(0,0,0,1)] -rotate-1 max-w-sm sm:max-w-md w-full overflow-hidden">
               <Image 
-                src="/logo.png" 
+                src="/info/727158076_1436957738241623_3992754550351923949_n.jpg" 
                 loading="eager"
                 alt="Kid painting happily" 
                 width={500}
                 height={500}
-                className="w-full h-auto object-cover rounded-[30px_15px_25px_10px] border-2 border-black"
+                className="w-full h-auto object-cover rounded-[30px_15px_25px_10px] border-2 border-black aspect-square"
               />
               <div className="absolute -bottom-2 -left-2 bg-sky-200 border-3 border-black px-4 py-2 font-black rounded-xl text-xs rotate-6 shadow-[3px_3px_0px_rgba(0,0,0,1)] text-black">
                 🎨 Thỏa sức sáng tạo!
               </div>
               <div className="absolute top-4 -right-2 bg-yellow-300 border-3 border-black px-3 py-1 font-black rounded-lg text-xs -rotate-12 shadow-[3px_3px_0px_rgba(0,0,0,1)] text-black">
-                🌟 Bé 4-12 tuổi
+                🌟 Bé 4-15 tuổi
               </div>
             </div>
           </div>
@@ -96,22 +152,45 @@ export default function Home() {
       <section className="py-8 bg-sky-100 border-b-4 border-black">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="p-3 border-2 border-black bg-white rounded-xl shadow-[3px_3px_0px_rgba(0,0,0,1)] rotate-1">
-              <p className="text-3xl md:text-4xl font-black text-sky-600"></p>
-              <p className="text-xs font-bold text-gray-500 mt-1 uppercase"></p>
+            {stats.map((stat, i) => (
+              <div 
+                key={i} 
+                className={`p-3 border-2 border-black bg-white rounded-xl shadow-[3px_3px_0px_rgba(0,0,0,1)] ${
+                  i % 2 === 0 ? "rotate-1" : "-rotate-1"
+                }`}
+              >
+                <p className="text-2xl md:text-3xl font-black text-sky-600">{stat.count}</p>
+                <p className="text-[10px] font-black text-gray-500 mt-1 uppercase tracking-wide">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ABOUT US DETAIL SECTION */}
+      <section className="py-16 px-4 md:px-8 border-b-4 border-black bg-white">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-5 relative flex justify-center order-2 lg:order-1">
+            <div className="relative border-4 border-black bg-white rounded-[40px_20px_35px_15px] p-4 shadow-[12px_12px_0px_rgba(0,0,0,1)] rotate-1 max-w-sm w-full overflow-hidden">
+              <Image 
+                src={aboutImage} 
+                alt="Vẽ zì đó classroom" 
+                width={500}
+                height={500}
+                className="w-full h-auto object-cover rounded-[30px_15px_25px_10px] border-2 border-black aspect-[4/3]"
+              />
             </div>
-            <div className="p-3 border-2 border-black bg-white rounded-xl shadow-[3px_3px_0px_rgba(0,0,0,1)] -rotate-1">
-              <p className="text-3xl md:text-4xl font-black text-amber-500"></p>
-              <p className="text-xs font-bold text-gray-500 mt-1 uppercase"></p>
-            </div>
-            <div className="p-3 border-2 border-black bg-white rounded-xl shadow-[3px_3px_0px_rgba(0,0,0,1)] rotate-2">
-              <p className="text-3xl md:text-4xl font-black text-rose-500"></p>
-              <p className="text-xs font-bold text-gray-500 mt-1 uppercase"></p>
-            </div>
-            <div className="p-3 border-2 border-black bg-white rounded-xl shadow-[3px_3px_0px_rgba(0,0,0,1)] -rotate-2">
-              <p className="text-3xl md:text-4xl font-black text-purple-600"></p>
-              <p className="text-xs font-bold text-gray-500 mt-1 uppercase"></p>
-            </div>
+          </div>
+          <div className="lg:col-span-7 space-y-6 text-left order-1 lg:order-2">
+            <span className="inline-block text-xs bg-amber-100 border-2 border-black rounded-lg px-3 py-1 font-black text-amber-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider">
+              Về chúng tôi
+            </span>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">
+              Giới thiệu dự án nghệ thuật <span className="text-sky-500">VẼ ZÌ ĐÓ</span>
+            </h2>
+            <p className="text-gray-700 font-bold text-sm md:text-base leading-relaxed whitespace-pre-wrap">
+              {aboutText}
+            </p>
           </div>
         </div>
       </section>
@@ -129,40 +208,122 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4">
-          {/* Benefit 1 */}
-          <div className="border-4 border-black bg-white rounded-3xl p-6 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all space-y-4">
-            <div className="w-12 h-12 bg-sky-200 border-2 border-black rounded-xl flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-              <Palette className="w-6 h-6 text-sky-700" />
+          {benefits.map((benefit, i) => (
+            <div 
+              key={i} 
+              className={`border-4 border-black bg-white rounded-3xl p-6 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all space-y-4 ${
+                i % 2 === 0 ? "rotate-1" : "-rotate-1"
+              }`}
+            >
+              <div className={`w-12 h-12 ${benefit.color || "bg-sky-200"} border-2 border-black rounded-xl flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)]`}>
+                {i === 0 ? (
+                  <Palette className="w-6 h-6 text-black" />
+                ) : i === 1 ? (
+                  <Award className="w-6 h-6 text-black" />
+                ) : (
+                  <ShieldCheck className="w-6 h-6 text-black" />
+                )}
+              </div>
+              <h3 className="text-xl font-black text-gray-900">{benefit.title}</h3>
+              <p className="text-xs font-semibold text-gray-500 leading-relaxed">
+                {benefit.description}
+              </p>
             </div>
-            <h3 className="text-xl font-black text-gray-900">Giáo Trình Sáng Tạo Tự Do</h3>
-            <p className="text-sm font-semibold text-gray-500 leading-relaxed">
-              Các bài học được nghiên cứu chuyên sâu, lồng ghép kể chuyện, trò chơi kích thích óc sáng tạo thay vì rập khuôn sao chép mẫu vẽ.
-            </p>
-          </div>
-
-          {/* Benefit 2 */}
-          <div className="border-4 border-black bg-white rounded-3xl p-6 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all space-y-4 rotate-1">
-            <div className="w-12 h-12 bg-amber-200 border-2 border-black rounded-xl flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-              <Award className="w-6 h-6 text-amber-700" />
-            </div>
-            <h3 className="text-xl font-black text-gray-900">Giáo Viên Chuẩn Mỹ Thuật</h3>
-            <p className="text-sm font-semibold text-gray-500 leading-relaxed">
-              Đội ngũ thầy cô tốt nghiệp các trường Đại học Mỹ thuật uy tín, có kỹ năng sư phạm mầm non và tràn đầy kiên nhẫn, tình yêu trẻ nhỏ.
-            </p>
-          </div>
-
-          {/* Benefit 3 */}
-          <div className="border-4 border-black bg-white rounded-3xl p-6 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all space-y-4 -rotate-1">
-            <div className="w-12 h-12 bg-purple-200 border-2 border-black rounded-xl flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-              <ShieldCheck className="w-6 h-6 text-purple-700" />
-            </div>
-            <h3 className="text-xl font-black text-gray-900">Theo Dõi Kết Quả Trực Quan</h3>
-            <p className="text-sm font-semibold text-gray-500 leading-relaxed">
-              Cổng thông tin phụ huynh tích hợp xem chi tiết số buổi học, chuyên cần và triển lãm các tác phẩm tranh vẽ kèm nhận xét từ giáo viên qua Mã học viên.
-            </p>
-          </div>
+          ))}
         </div>
       </section>
+
+      {/* TEACHERS TEAM SECTION */}
+      {teachers.length > 0 && (
+        <section className="py-16 px-4 md:px-8 bg-[#fdf5e6] border-t-4 border-black">
+          <div className="max-w-6xl mx-auto space-y-12">
+            <div className="text-center max-w-2xl mx-auto space-y-4">
+              <span className="inline-block text-xs bg-purple-100 border-2 border-black rounded-lg px-3 py-1 font-black text-purple-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider">
+                Đội ngũ chuyên môn
+              </span>
+              <h2 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight">
+                Đội ngũ sáng lập & Giảng viên
+              </h2>
+              <p className="text-gray-500 font-bold text-sm">
+                Những nhà sư phạm mỹ thuật giàu chuyên môn, tâm huyết và thấu hiểu tâm lý trẻ thơ.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+              {teachers.map((teacher: Teacher, i: number) => (
+                <div 
+                  key={i} 
+                  className={`border-4 border-black bg-white rounded-3xl p-6 shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row gap-6 items-start transition-all ${
+                    i % 2 === 0 ? "rotate-1" : "-rotate-1"
+                  }`}
+                >
+                  <div className="relative border-3 border-black bg-white rounded-2xl p-1.5 shadow-[3px_3px_0px_rgba(0,0,0,1)] max-w-[150px] w-full shrink-0 mx-auto md:mx-0">
+                    <Image 
+                      src={teacher.avatar || "/logo.png"} 
+                      alt={teacher.name} 
+                      width={150} 
+                      height={150} 
+                      className="w-full h-auto object-cover rounded-xl border-2 border-black aspect-square"
+                    />
+                  </div>
+                  <div className="space-y-3 flex-1">
+                    <div>
+                      <h3 className="text-xl font-black text-gray-900">{teacher.name}</h3>
+                      <p className="text-xs font-black text-sky-600 uppercase mt-0.5">{teacher.role}</p>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {teacher.achievements?.map((ach, idx) => (
+                        <li key={idx} className="text-[11px] font-semibold text-gray-600 flex items-start gap-1.5 leading-relaxed">
+                          <span className="text-sky-500 mt-1 shrink-0">✨</span>
+                          <span>{ach}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* GALLERY PHOTOS SECTION */}
+      {galleryImages.length > 0 && (
+        <section className="py-16 px-4 md:px-8 bg-white border-t-4 border-black">
+          <div className="max-w-6xl mx-auto space-y-12">
+            <div className="text-center max-w-2xl mx-auto space-y-4">
+              <span className="inline-block text-xs bg-sky-100 border-2 border-black rounded-lg px-3 py-1 font-black text-sky-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider">
+                Thư viện hình ảnh
+              </span>
+              <h2 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight">
+                Không gian lớp học & Tác phẩm
+              </h2>
+              <p className="text-gray-500 font-bold text-sm">
+                Một vài khoảnh khắc đáng yêu tại các lớp học vẽ máy và vẽ màu truyền thống của các bé.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-4">
+              {galleryImages.map((imgUrl: string, idx: number) => (
+                <div 
+                  key={idx} 
+                  className={`border-3 border-black bg-white rounded-2xl p-1.5 shadow-[3px_3px_0px_rgba(0,0,0,1)] overflow-hidden hover:scale-105 transition-all cursor-pointer ${
+                    idx % 2 === 0 ? "rotate-2" : "-rotate-2"
+                  }`}
+                >
+                  <Image 
+                    src={imgUrl} 
+                    alt={`Classroom photo ${idx + 1}`} 
+                    width={300} 
+                    height={300} 
+                    className="w-full h-auto object-cover rounded-xl border-2 border-black aspect-square"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* HIGHLIGHT COURSES PREVIEW */}
       <section className="py-16 px-4 md:px-8 bg-amber-50/50 border-t-4 border-b-4 border-black">
@@ -185,71 +346,43 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Course 1 */}
-            <div className="border-4 border-black bg-white rounded-3xl overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
-              <div className="p-6 space-y-4">
-                <span className="inline-block text-[10px] bg-blue-100 border-2 border-black px-2 py-0.5 rounded font-black text-blue-800 uppercase tracking-wide">
-                  Mầm Non (4-6 tuổi)
-                </span>
-                <h3 className="text-2xl font-black text-gray-900">Khóa Vẽ Sáng Tạo Mầm Non</h3>
-                <p className="text-xs font-semibold text-gray-500 leading-relaxed">
-                  Làm quen với chất liệu màu cơ bản, học cách nhận diện hình khối thông qua các câu chuyện kể, bồi đắp hứng thú hội họa tự nhiên cho bé.
-                </p>
+            {dbCourses.slice(0, 3).map((course, i) => (
+              <div 
+                key={course.id} 
+                className={`border-4 border-black bg-white rounded-3xl overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between ${
+                  i === 1 ? "md:scale-105 border-sky-500 shadow-sky-500/10" : ""
+                }`}
+              >
+                <div className="p-6 space-y-4">
+                  <span className={`inline-block text-[9px] border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wide ${
+                    course.type === "AGE_BASED" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"
+                  }`}>
+                    {course.type === "AGE_BASED" ? "👶 Theo độ tuổi" : "🎨 Chuyên đề"}
+                  </span>
+                  <h3 className="text-2xl font-black text-gray-900 leading-snug">{course.title}</h3>
+                  <p className="text-xs font-semibold text-gray-500 leading-relaxed line-clamp-3">
+                    {course.audience}
+                  </p>
+                </div>
+                <div className="p-6 border-t-2 border-black bg-amber-50/10 flex items-center justify-between">
+                  <span className="font-black text-lg text-gray-900">
+                    {course.fee?.toLocaleString("vi-VN")}đ
+                    <span className="text-xs font-bold text-gray-400">/{course.feeUnit}</span>
+                  </span>
+                  <Link 
+                    href="/enroll" 
+                    className={`border-2 border-black px-3.5 py-1.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all text-center ${
+                      i === 1 ? "bg-amber-300 hover:bg-amber-400" : "bg-white hover:bg-gray-50"
+                    }`}
+                  >
+                    Đăng ký học
+                  </Link>
+                </div>
               </div>
-              <div className="p-6 border-t-2 border-black bg-blue-50/20 flex items-center justify-between">
-                <span className="font-black text-lg text-gray-900">1.200.000đ<span className="text-xs font-bold text-gray-400">/tháng</span></span>
-                <Link 
-                  href="/enroll" 
-                  className="bg-white border-2 border-black px-3.5 py-1.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-gray-50 transition-all text-center"
-                >
-                  Đăng ký ngay
-                </Link>
-              </div>
-            </div>
-
-            {/* Course 2 */}
-            <div className="border-4 border-black bg-white rounded-3xl overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between md:scale-105 border-sky-500 shadow-sky-500/10">
-              <div className="p-6 space-y-4">
-                <span className="inline-block text-[10px] bg-emerald-100 border-2 border-black px-2 py-0.5 rounded font-black text-emerald-800 uppercase tracking-wide">
-                  Thiếu Nhi (7-9 tuổi)
-                </span>
-                <h3 className="text-2xl font-black text-gray-900">Khóa Màu Nước Nâng Cao</h3>
-                <p className="text-xs font-semibold text-gray-500 leading-relaxed">
-                  Phát triển chuyên sâu kỹ năng phối màu, kỹ thuật dựng hình nâng cao với bột màu, acrylic, màu nước và các dự án thiết kế sáng tạo.
-                </p>
-              </div>
-              <div className="p-6 border-t-2 border-black bg-emerald-50/20 flex items-center justify-between">
-                <span className="font-black text-lg text-gray-900">2.000.000đ<span className="text-xs font-bold text-gray-400">/tháng</span></span>
-                <Link 
-                  href="/enroll" 
-                  className="bg-amber-300 hover:bg-amber-400 border-2 border-black px-3.5 py-1.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all text-center"
-                >
-                  Đăng ký học
-                </Link>
-              </div>
-            </div>
-
-            {/* Course 3 */}
-            <div className="border-4 border-black bg-white rounded-3xl overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
-              <div className="p-6 space-y-4">
-                <span className="inline-block text-[10px] bg-purple-100 border-2 border-black px-2 py-0.5 rounded font-black text-purple-800 uppercase tracking-wide">
-                  Thiếu Niên (10-12 tuổi)
-                </span>
-                <h3 className="text-2xl font-black text-gray-900">Hội Họa Nghệ Sĩ Nhí</h3>
-                <p className="text-xs font-semibold text-gray-500 leading-relaxed">
-                  Trải nghiệm vẽ tranh sơn dầu nghệ thuật, kỹ thuật bố cục nâng cao, thiết kế nhân vật truyện tranh và xây dựng tác phẩm triển lãm cá nhân.
-                </p>
-              </div>
-              <div className="p-6 border-t-2 border-black bg-purple-50/20 flex items-center justify-between">
-                <span className="font-black text-lg text-gray-900">2.800.000đ<span className="text-xs font-bold text-gray-400">/tháng</span></span>
-                <Link 
-                  href="/enroll" 
-                  className="bg-white border-2 border-black px-3.5 py-1.5 rounded-xl text-xs font-black shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-gray-50 transition-all text-center"
-                >
-                  Đăng ký ngay
-                </Link>
-              </div>
-            </div>
+            ))}
+            {dbCourses.length === 0 && (
+              <p className="col-span-3 text-center font-bold text-gray-400 italic">Chưa có khóa học động nào được tạo trong DB.</p>
+            )}
           </div>
         </div>
       </section>

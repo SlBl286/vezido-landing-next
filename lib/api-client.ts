@@ -286,6 +286,30 @@ export const cmsApi = {
       if (params.endDate) query.append("endDate", params.endDate);
       return fetchJson<{ completions: any[] }>(`/api/cms/tasks/completions?${query.toString()}`);
     }
+  },
+  courses: {
+    list: () => fetchJson<{ courses: any[] }>("/api/cms/courses"),
+    create: (data: any) => fetchJson<{ course: any }>("/api/cms/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: any) => fetchJson<{ course: any }>(`/api/cms/courses?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/courses?id=${id}`, {
+      method: "DELETE",
+    }),
+  },
+  settings: {
+    get: () => fetchJson<{ settings: Record<string, string> }>("/api/cms/settings"),
+    save: (settings: Record<string, string>) => fetchJson<{ success: boolean }>("/api/cms/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings }),
+    }),
   }
 };
 

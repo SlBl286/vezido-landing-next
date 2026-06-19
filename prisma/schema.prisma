@@ -269,4 +269,27 @@ model TaskCompletion {
   @@unique([taskId, sessionId, teacherId])
 }
 
+model Course {
+  id           String   @id @default(cuid())
+  title        String   @unique // Tên khóa học
+  type         String   // "AGE_BASED" hoặc "SPECIALIZED"
+  audience     String   // Đối tượng học viên
+  duration     String   // Thời lượng (ví dụ: "12 buổi / khóa")
+  fee          Float    // Học phí (đơn giá)
+  feeUnit      String   @default("buổi") // Đơn vị: "buổi", "khóa"
+  feeNote      String?  // Ghi chú học phí (ví dụ: "đã bao gồm họa cụ")
+  objectives   String[] // Mục tiêu / Sau khóa học
+  content      String[] // Nội dung lộ trình từng buổi
+  benefits     String[] // Ưu đãi / Khuyến mãi
+  isActive     Boolean  @default(true) // Trạng thái hiển thị ngoài landing page
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
 
+model SiteSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique // Khóa cấu hình
+  value       String   @db.Text // Giá trị cấu hình
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
