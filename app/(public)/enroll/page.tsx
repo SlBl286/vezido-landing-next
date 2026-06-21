@@ -4,6 +4,8 @@ import { RefreshCw } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { EnrollFormClient } from "./components/enroll-form-client";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Vẽ zì đó - Đăng ký học vẽ",
   description: "Đăng ký lớp học vẽ sáng tạo cho bé từ 4-12 tuổi. Nhận tặng bộ họa cụ trị giá 250.000đ khi ghi danh.",

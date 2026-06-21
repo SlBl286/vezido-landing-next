@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { ScheduleClient } from "./components/schedule-client";
 import { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Vẽ zì đó - Lịch lớp",
   description: "Lịch các lớp học vẽ online và offline",

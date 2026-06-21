@@ -4,6 +4,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import PricingClient from "./PricingClient";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Vẽ zì đó - Bảng giá khóa học vẽ 🎨",
   description: "Chi tiết học phí các lớp vẽ sáng tạo mầm non, màu nước nâng cao và nghệ sĩ nhí chuyên nghiệp. Đăng ký học thử miễn phí cho bé.",
