@@ -577,7 +577,7 @@ export default function TasksPage() {
                             <h4 className="font-black text-sm text-gray-900">🎨 Lớp: {session.class.name}</h4>
                             <p className="text-[10px] text-gray-500 font-bold mt-0.5">⏱️ {session.startTime} - {session.endTime} | 📍 Phòng: {session.room || "Chưa xếp phòng"}</p>
                           </div>
-                          <span className={`text-[9px] font-black border-2 border-black rounded px-2 py-0.5 ${
+                          <span className={`text-[9px] font-black border-2 border-black rounded px-2 py-0.5 whitespace-nowrap ${
                             session.status === "COMPLETED" 
                               ? "bg-[#baffc9] text-emerald-800" 
                               : "bg-amber-100 text-amber-800"
@@ -610,12 +610,12 @@ export default function TasksPage() {
                                             <div className="flex items-center gap-1.5 flex-wrap">
                                               <span className="font-extrabold text-xs text-gray-900">{task.title}</span>
                                               {task.reward && (
-                                                <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                                <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
                                                   🎁 {task.reward}
                                                 </span>
                                               )}
                                               {task.penalty && (
-                                                <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                                <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
                                                   ⚠️ {task.penalty}
                                                 </span>
                                               )}
@@ -671,12 +671,12 @@ export default function TasksPage() {
                                             <div className="flex items-center gap-1.5 flex-wrap">
                                               <span className="font-extrabold text-xs text-gray-900">{task.title}</span>
                                               {task.reward && (
-                                                <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                                <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
                                                   🎁 {task.reward}
                                                 </span>
                                               )}
                                               {task.penalty && (
-                                                <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                                <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
                                                   ⚠️ {task.penalty}
                                                 </span>
                                               )}
@@ -754,12 +754,12 @@ export default function TasksPage() {
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
                                 {task.reward && (
-                                  <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                  <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
                                     🎁 {task.reward}
                                   </span>
                                 )}
                                 {task.penalty && (
-                                  <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                  <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
                                     ⚠️ {task.penalty}
                                   </span>
                                 )}
@@ -813,12 +813,12 @@ export default function TasksPage() {
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
                                 {task.reward && (
-                                  <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                  <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
                                     🎁 {task.reward}
                                   </span>
                                 )}
                                 {task.penalty && (
-                                  <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                  <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
                                     ⚠️ {task.penalty}
                                   </span>
                                 )}
@@ -872,12 +872,12 @@ export default function TasksPage() {
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-extrabold text-sm text-gray-900">{task.title}</span>
                                 {task.reward && (
-                                  <span className="text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
+                                  <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#a8e6cf] border border-black rounded px-1 text-emerald-800">
                                     🎁 {task.reward}
                                   </span>
                                 )}
                                 {task.penalty && (
-                                  <span className="text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
+                                  <span className="inline-block break-words whitespace-normal max-w-full text-[9px] font-black bg-[#ffb3ba] border border-black rounded px-1 text-red-800">
                                     ⚠️ {task.penalty}
                                   </span>
                                 )}
@@ -943,19 +943,19 @@ export default function TasksPage() {
                       <tr key={comp.id} className="text-xs font-bold text-gray-700 bg-white hover:bg-gray-50">
                         <td className="p-3 font-extrabold text-gray-900">{comp.taskTitle}</td>
                         <td className="p-3">
-                          <span className="border-2 border-black rounded px-1.5 py-0.5 bg-[#fefaf0]">
+                          <span className="border-2 border-black rounded px-1.5 py-0.5 bg-[#fefaf0] whitespace-nowrap">
                             {freqLabel}
                           </span>
                         </td>
                         <td className="p-3">
                           <div className="flex flex-col gap-1">
                             {comp.reward && (
-                              <span className="text-[10px] font-black text-emerald-700 bg-[#a8e6cf]/30 border border-black/20 rounded px-1.5 py-0.5 w-fit">
+                              <span className="inline-block break-words whitespace-normal max-w-[150px] text-[10px] font-black text-emerald-700 bg-[#a8e6cf]/30 border border-black/20 rounded px-1.5 py-0.5">
                                 🎁 {comp.reward}
                               </span>
                             )}
                             {comp.penalty && (
-                              <span className="text-[10px] font-black text-red-700 bg-[#ffb3ba]/30 border border-black/20 rounded px-1.5 py-0.5 w-fit">
+                              <span className="inline-block break-words whitespace-normal max-w-[150px] text-[10px] font-black text-red-700 bg-[#ffb3ba]/30 border border-black/20 rounded px-1.5 py-0.5">
                                 ⚠️ {comp.penalty}
                               </span>
                             )}
@@ -1002,7 +1002,7 @@ export default function TasksPage() {
                   <div key={task.id} className="border-4 border-black bg-white rounded-3xl p-5 shadow-[5px_5px_0px_rgba(0,0,0,1)] flex flex-col justify-between hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="border-2 border-black rounded-lg px-2 py-0.5 bg-[#bae1ff] font-bold text-[10px] text-sky-900 uppercase">
+                        <span className="border-2 border-black rounded-lg px-2 py-0.5 bg-[#bae1ff] font-bold text-[10px] text-sky-900 uppercase whitespace-nowrap">
                           {freqLabel}
                         </span>
                         
@@ -1029,14 +1029,14 @@ export default function TasksPage() {
                         <p className="text-xs font-medium text-gray-500 leading-relaxed line-clamp-3 bg-gray-50 p-2 border border-black/5 rounded-lg">{task.description}</p>
                       )}
                       
-                      <div className="flex gap-2 mt-2.5">
+                      <div className="flex flex-wrap gap-2 mt-2.5">
                         {task.reward && (
-                          <span className="text-[10px] font-black bg-[#a8e6cf] border-2 border-black rounded-lg px-2 py-0.5 text-emerald-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                          <span className="inline-block break-words whitespace-normal max-w-full text-[10px] font-black bg-[#a8e6cf] border-2 border-black rounded-lg px-2 py-0.5 text-emerald-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                             🎁 Thưởng: {task.reward}
                           </span>
                         )}
                         {task.penalty && (
-                          <span className="text-[10px] font-black bg-[#ffb3ba] border-2 border-black rounded-lg px-2 py-0.5 text-red-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                          <span className="inline-block break-words whitespace-normal max-w-full text-[10px] font-black bg-[#ffb3ba] border-2 border-black rounded-lg px-2 py-0.5 text-red-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                             ⚠️ Phạt: {task.penalty}
                           </span>
                         )}
@@ -1181,19 +1181,19 @@ export default function TasksPage() {
                         <td className="p-3 font-black text-indigo-700">👤 {comp.teacherName}</td>
                         <td className="p-3 font-extrabold text-gray-900">{comp.taskTitle}</td>
                         <td className="p-3">
-                          <span className="border-2 border-black rounded px-1.5 py-0.5 bg-yellow-50 text-[10px]">
+                          <span className="border-2 border-black rounded px-1.5 py-0.5 bg-yellow-50 text-[10px] whitespace-nowrap">
                             {freqLabel}
                           </span>
                         </td>
                         <td className="p-3">
                           <div className="flex flex-col gap-1">
                             {comp.reward && (
-                              <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-300 rounded px-1.5 py-0.5 w-fit">
+                              <span className="inline-block break-words whitespace-normal max-w-[150px] text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-300 rounded px-1.5 py-0.5">
                                 🎁 {comp.reward}
                               </span>
                             )}
                             {comp.penalty && (
-                              <span className="text-[10px] font-black text-red-700 bg-red-50 border border-red-300 rounded px-1.5 py-0.5 w-fit">
+                              <span className="inline-block break-words whitespace-normal max-w-[150px] text-[10px] font-black text-red-700 bg-red-50 border border-red-300 rounded px-1.5 py-0.5">
                                 ⚠️ {comp.penalty}
                               </span>
                             )}

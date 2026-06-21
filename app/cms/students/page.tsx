@@ -145,7 +145,7 @@ export default function StudentsPage() {
                 <tr key={student.id} className="border-b-2 border-gray-200 hover:bg-[#fff9ed] transition-colors">
                   <td className="py-4 px-4 font-black">
                     {student.studentCode ? (
-                      <span className="bg-purple-100 border-2 border-black rounded-lg px-2.5 py-1 text-purple-800 text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                      <span className="bg-purple-100 border-2 border-black rounded-lg px-2.5 py-1 text-purple-800 text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
                         {student.studentCode}
                       </span>
                     ) : (
@@ -156,7 +156,7 @@ export default function StudentsPage() {
                     {student.studentName}
                   </td>
                   <td className="py-4 px-4 text-center">
-                    <span className="bg-amber-100 border-2 border-black rounded-lg px-2 py-0.5 font-bold text-amber-800 text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <span className="bg-amber-100 border-2 border-black rounded-lg px-2 py-0.5 font-bold text-amber-800 text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
                       {student.studentAge} tuổi
                     </span>
                   </td>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import { cmsApi } from "@/lib/api-client";
 import { NotificationModal } from "./NotificationModal";
+import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 
 interface EditClassModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface EditClassModalProps {
   classData: any | null;
   teachers: any[];
   specialties: any[];
+  courses: any[];
   onSuccess: () => void;
 }
 
@@ -20,12 +22,14 @@ export function EditClassModal({
   classData,
   teachers,
   specialties,
+  courses,
   onSuccess
 }: EditClassModalProps) {
   const [classForm, setClassForm] = useState({
     name: "",
     room: "",
     schedule: "",
+    courseId: "",
     teacherIds: [] as string[],
     specialtyIds: [] as string[]
   });
@@ -68,6 +72,7 @@ export function EditClassModal({
         name: classData.name || "",
         room: classData.room || "",
         schedule: classData.schedule || "",
+        courseId: classData.courseId || "",
         teacherIds: classData.teachers?.map((t: any) => t.id) || [],
         specialtyIds: classData.specialties?.map((s: any) => s.id) || []
       });
@@ -137,6 +142,16 @@ export function EditClassModal({
           )}
 
           <form onSubmit={handleEditClass} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-1">Khóa học đào tạo liên kết</label>
+              <CustomSelect
+                value={classForm.courseId}
+                onChange={(val) => setClassForm({ ...classForm, courseId: val })}
+                options={courses.map(c => ({ value: c.id, label: c.title }))}
+                placeholder="Chọn khóa học để liên kết..."
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-bold text-gray-800 mb-1">Tên lớp học *</label>
               <input

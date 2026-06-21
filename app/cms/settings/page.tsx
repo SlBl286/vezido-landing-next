@@ -266,7 +266,7 @@ export default function SettingsManagerPage() {
         >
           <span className="flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5" />
-            Thống kê & Lợi ích
+            Lợi ích cốt lõi
           </span>
         </button>
 
@@ -354,41 +354,9 @@ export default function SettingsManagerPage() {
           </div>
         )}
 
-        {/* Tab 2: Statistics & Core Values */}
+        {/* Tab 2: Core Values */}
         {activeTab === "stats" && (
           <div className="space-y-6 animate-in fade-in duration-100">
-            <div>
-              <h3 className="text-lg font-black text-black mb-4">📈 CHỈ SỐ THỐNG KÊ (Hiển thị hàng ngang ở trang chủ)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                {stats.map((stat, idx) => (
-                  <div key={idx} className="border-2 border-black rounded-xl p-3 bg-gray-50 space-y-2">
-                    <div>
-                      <label className="block text-[10px] font-black text-gray-500 uppercase">Con số (Ví dụ: 150+)</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full border-2 border-black rounded-lg p-1.5 bg-white font-bold text-black focus:outline-none text-xs"
-                        value={stat.count}
-                        onChange={e => handleUpdateStat(idx, "count", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black text-gray-500 uppercase">Nhãn mô tả</label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full border-2 border-black rounded-lg p-1.5 bg-white font-bold text-black focus:outline-none text-xs"
-                        value={stat.label}
-                        onChange={e => handleUpdateStat(idx, "label", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <hr className="border-t-2 border-black/10 border-dashed" />
-
             <div>
               <h3 className="text-lg font-black text-black mb-4">🎨 3 LỢI ÍCH CỐT LÕI (Core Benefits)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

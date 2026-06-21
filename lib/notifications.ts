@@ -147,3 +147,127 @@ export function sendNotifications(contact: ContactPayload) {
   );
 }
 
+export interface PaymentNotificationPayload {
+  studentName?: string;
+  studentCode?: string;
+  className?: string;
+  amount: number;
+  gateway: string;
+  content: string;
+  transactionId: string;
+  status: "SUCCESS" | "UNMATCHED";
+  errorDetails?: string;
+}
+
+export async function sendPaymentNotification(payment: PaymentNotificationPayload) {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, NOTIFY_EMAIL } = process.env;
+  const threadId = process.env.ZALO_NOTIFY_THREAD_ID || process.env.ZALO_ADMIN_USER_ID;
+  const threadTypeStr = process.env.ZALO_THREAD_TYPE || "user";
+
+  const isSuccess = payment.status === "SUCCESS";
+  const title = isSuccess ? "✅ Đã nhận học phí tự động!" : "⚠️ Giao dịch chuyển khoản chưa khớp!";
+  const statusEmoji = isSuccess ? "🟢" : "🔴";
+
+  // --- Zalo ---
+  if (threadId) {
+    try {
+      const text =
+        `🎨 [Vẽ zì đó - Thanh Toán] ${title}\n` +
+        `📝 Mã GD SePay: ${payment.transactionId}\n` +
+        `💰 Số tiền: ${payment.amount.toLocaleString("vi-VN")} đ\n` +
+        `🏦 Ngân hàng: ${payment.gateway}\n` +
+        `✍️ Nội dung chuyển: "${payment.content}"\n` +
+        (isSuccess
+          ? `👶 Học viên: ${payment.studentName}\n` +
+            `🔑 Mã HS: ${payment.studentCode || "Chưa cấp"}\n` +
+            `🏫 Lớp: ${payment.className}\n` +
+            `✨ Trạng thái: Đã tự động kích hoạt Học phí thành công!`
+          : `❌ Lỗi: ${payment.errorDetails || "Không khớp thông tin học viên nhí trong hệ thống"}`);
+
+      const type = threadTypeStr.toLowerCase() === "group" ? ThreadType.Group : ThreadType.User;
+      const api = await getZaloApi();
+      await api.sendMessage(text, threadId, type);
+      console.log("[Notification] Zalo payment notification sent successfully.");
+    } catch (err) {
+      console.error("[Notification] Zalo payment notification failed:", err);
+    }
+  }
+
+  // --- Email ---
+  if (SMTP_HOST && SMTP_USER && SMTP_PASS && NOTIFY_EMAIL) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: SMTP_HOST,
+        port: Number(SMTP_PORT) || 587,
+        secure: false,
+        auth: {
+          user: SMTP_USER,
+          pass: SMTP_PASS,
+        },
+      });
+
+      const html = `
+        <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; border: 2px solid #000; border-radius: 16px; overflow: hidden;">
+          <div style="background: ${isSuccess ? "#baffc9" : "#ffb3ba"}; padding: 20px 24px; border-bottom: 2px solid #000;">
+            <h2 style="margin: 0; font-size: 20px; color: #000;">🎨 [Vẽ zì đó] ${title}</h2>
+            <p style="margin: 4px 0 0; font-size: 13px; color: #333;">Thông báo giao dịch từ hệ thống cổng thanh toán SePay</p>
+          </div>
+          <div style="padding: 24px; background: #fff;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #555; width: 140px;">🔑 Mã GD SePay:</td>
+                <td style="padding: 8px 0; font-weight: 700;">${payment.transactionId}</td>
+              </tr>
+              <tr style="background: #f9f9f9;">
+                <td style="padding: 8px 4px; font-weight: bold; color: #555;">💰 Số tiền:</td>
+                <td style="padding: 8px 4px; font-weight: 700; color: #b91c1c;">${payment.amount.toLocaleString("vi-VN")} đ</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #555;">🏦 Ngân hàng:</td>
+                <td style="padding: 8px 0; font-weight: 600;">${payment.gateway}</td>
+              </tr>
+              <tr style="background: #f9f9f9;">
+                <td style="padding: 8px 4px; font-weight: bold; color: #555;">✍️ Nội dung chuyển:</td>
+                <td style="padding: 8px 4px; font-family: monospace;">${payment.content}</td>
+              </tr>
+              ${isSuccess ? `
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #555;">👶 Học viên nhí:</td>
+                <td style="padding: 8px 0; font-weight: 600;">${payment.studentName}</td>
+              </tr>
+              <tr style="background: #f9f9f9;">
+                <td style="padding: 8px 4px; font-weight: bold; color: #555;">🔑 Mã học viên:</td>
+                <td style="padding: 8px 4px; font-weight: 600;">${payment.studentCode || "Chưa cấp"}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #555;">🏫 Lớp học:</td>
+                <td style="padding: 8px 0; font-weight: 600;">${payment.className}</td>
+              </tr>
+              ` : `
+              <tr style="background: #fff0f0;">
+                <td style="padding: 8px 4px; font-weight: bold; color: #b91c1c; vertical-align: top;">❌ Chi tiết lỗi:</td>
+                <td style="padding: 8px 4px; color: #b91c1c; font-weight: 600;">${payment.errorDetails || "Không khớp thông tin học viên nhí trong hệ thống"}</td>
+              </tr>
+              `}
+            </table>
+          </div>
+          <div style="padding: 16px 24px; background: #f0f0f0; border-top: 2px solid #000; font-size: 12px; color: #666;">
+            Thời gian thông báo: ${new Date().toLocaleString("vi-VN")} — Vẽ zì đó CMS
+          </div>
+        </div>
+      `;
+
+      await transporter.sendMail({
+        from: `"Vẽ zì đó Webhook" <${SMTP_USER}>`,
+        to: NOTIFY_EMAIL,
+        subject: `${statusEmoji} SePay: ${isSuccess ? `Thanh toán thành công ${payment.studentName}` : `Giao dịch lỗi (${payment.amount.toLocaleString("vi-VN")} đ)`}`,
+        html,
+      });
+      console.log("[Notification] Email payment notification sent successfully.");
+    } catch (err) {
+      console.error("[Notification] Email payment notification failed:", err);
+    }
+  }
+}
+
+

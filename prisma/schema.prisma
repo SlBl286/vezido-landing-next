@@ -101,6 +101,8 @@ model Class {
   name        String         // Tên lớp học
   schedule    String?        // Lịch học (tùy chọn, có thể tự động lấy từ buổi học)
   room        String?        // Phòng học hoặc link online
+  courseId    String?
+  course      Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
   teachers    Teacher[]      @relation("ClassTeachers")
   students    StudentClass[]
   specialties Specialty[]
@@ -110,17 +112,22 @@ model Class {
 }
 
 model StudentClass {
-  id          String   @id @default(cuid())
-  studentCode String?  // Mã học sinh để theo dõi nhiều khóa
-  studentName String
-  studentAge  Int
-  parentName  String
-  parentPhone String
-  classId     String
-  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  attendance  Attendance[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String       @id @default(cuid())
+  studentCode        String?      // Mã học sinh để theo dõi nhiều khóa
+  studentName        String
+  studentAge         Int
+  parentName         String
+  parentPhone        String
+  classId            String
+  class              Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  isPaid             Boolean      @default(false)
+  amountPaid         Float?
+  discountCode       String?
+  paymentDate        DateTime?
+  sepayTransactionId String?      @unique
+  attendance         Attendance[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 }
 
 model ClassSession {
@@ -269,21 +276,33 @@ model TaskCompletion {
   @@unique([taskId, sessionId, teacherId])
 }
 
+model ClassCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique // LỚP MẦM, LỚP CHỒI, LỚP LÁ, DIGITAL ART, etc.
+  courses   Course[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Course {
-  id           String   @id @default(cuid())
-  title        String   @unique // Tên khóa học
-  type         String   // "AGE_BASED" hoặc "SPECIALIZED"
-  audience     String   // Đối tượng học viên
-  duration     String   // Thời lượng (ví dụ: "12 buổi / khóa")
-  fee          Float    // Học phí (đơn giá)
-  feeUnit      String   @default("buổi") // Đơn vị: "buổi", "khóa"
-  feeNote      String?  // Ghi chú học phí (ví dụ: "đã bao gồm họa cụ")
-  objectives   String[] // Mục tiêu / Sau khóa học
-  content      String[] // Nội dung lộ trình từng buổi
-  benefits     String[] // Ưu đãi / Khuyến mãi
-  isActive     Boolean  @default(true) // Trạng thái hiển thị ngoài landing page
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String         @id @default(cuid())
+  title           String         @unique // Tên khóa học
+  type            String?        // "AGE_BASED" hoặc "SPECIALIZED" (để nullable tránh lỗi dữ liệu cũ)
+  audience        String         // Đối tượng học viên
+  duration        String         // Thời lượng (ví dụ: "12 buổi / khóa")
+  fee             Float          // Học phí (đơn giá)
+  feeUnit         String         @default("buổi") // Đơn vị: "buổi", "khóa"
+  feeNote         String?        // Ghi chú học phí (ví dụ: "đã bao gồm họa cụ")
+  objectives      String[]       // Mục tiêu / Sau khóa học
+  content         String[]       // Nội dung lộ trình từng buổi
+  benefits        String[]       // Ưu đãi / Khuyến mãi
+  isActive        Boolean        @default(true) // Trạng thái hiển thị ngoài landing page
+  classes         Class[]
+  classCategoryId String?
+  classCategory   ClassCategory? @relation(fields: [classCategoryId], references: [id], onDelete: SetNull)
+  level           String?        // Ví dụ: Level 1, Level 2
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 }
 
 model SiteSetting {
@@ -292,4 +311,21 @@ model SiteSetting {
   value       String   @db.Text // Giá trị cấu hình
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Promotion {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  description   String?   @db.Text
+  discountType  String    // "PERCENTAGE" hoặc "FIXED_AMOUNT"
+  discountValue Float
+  minOrderValue Float?
+  maxDiscount   Float?
+  startDate     DateTime?
+  endDate       DateTime?
+  isActive      Boolean   @default(true)
+  maxUses       Int?      // Số lần sử dụng tối đa
+  usedCount     Int       @default(0) // Số lần đã sử dụng
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

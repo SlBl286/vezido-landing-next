@@ -11,6 +11,7 @@ interface AddClassModalProps {
   onClose: () => void;
   teachers: any[];
   specialties: any[];
+  courses: any[];
   onSuccess: () => void;
 }
 
@@ -19,11 +20,13 @@ export function AddClassModal({
   onClose,
   teachers,
   specialties,
+  courses,
   onSuccess
 }: AddClassModalProps) {
   const [classForm, setClassForm] = useState({
     name: "",
     room: "",
+    courseId: "",
     teacherIds: [] as string[],
     specialtyIds: [] as string[],
     autoSchedule: true,
@@ -124,9 +127,9 @@ export function AddClassModal({
     setFormError("");
     setSubmitting(true);
 
-    if (!classForm.name || !classForm.schedules || classForm.schedules.length === 0) {
-      setFormError("Vui lòng điền các trường bắt buộc (Tên lớp học, Lịch học)");
-      showNotification("Lỗi tạo lớp học", "Vui lòng nhập Tên lớp học và thêm ít nhất một Lịch học.", "error");
+    if ((!classForm.name && !classForm.courseId) || !classForm.schedules || classForm.schedules.length === 0) {
+      setFormError("Vui lòng điền các trường bắt buộc (Khóa học/Tên lớp, Lịch học)");
+      showNotification("Lỗi tạo lớp học", "Vui lòng chọn Khóa học hoặc nhập Tên lớp và thêm ít nhất một Lịch học.", "error");
       setSubmitting(false);
       return;
     }
@@ -137,6 +140,7 @@ export function AddClassModal({
       setClassForm({
         name: "",
         room: "",
+        courseId: "",
         teacherIds: [],
         specialtyIds: [],
         autoSchedule: true,
@@ -179,13 +183,26 @@ export function AddClassModal({
 
         <form onSubmit={handleAddClass} className="space-y-4">
           <div>
+            <label className="block text-sm font-bold text-gray-800 mb-1">Khóa học đào tạo liên kết</label>
+            <CustomSelect
+              value={classForm.courseId}
+              onChange={(val) => setClassForm({ ...classForm, courseId: val })}
+              options={courses.map(c => ({ value: c.id, label: c.title }))}
+              placeholder="Chọn khóa học để liên kết..."
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-bold text-gray-800 mb-1">Tên lớp học *</label>
             <input
               type="text"
-              required
-              placeholder="Ví dụ: Vẽ thiếu nhi K1"
-              className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-medium"
-              value={classForm.name}
+              required={!classForm.courseId}
+              disabled={!!classForm.courseId}
+              placeholder={classForm.courseId ? "Tên lớp học tự động tạo theo khóa học" : "Ví dụ: Vẽ thiếu nhi K1"}
+              className={`w-full border-3 border-black rounded-xl p-2.5 font-medium ${
+                classForm.courseId ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "bg-gray-50"
+              }`}
+              value={classForm.courseId ? "" : classForm.name}
               onChange={(e) => setClassForm({ ...classForm, name: e.target.value })}
             />
           </div>

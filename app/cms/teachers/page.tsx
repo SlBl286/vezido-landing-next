@@ -411,7 +411,7 @@ export default function TeachersPage() {
                     {teacher.specialties && teacher.specialties.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {teacher.specialties.map((spec) => (
-                          <span key={spec.id} className="bg-[#dcd6f7] border-2 border-black rounded-lg px-2.5 py-0.5 font-bold text-black text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                          <span key={spec.id} className="bg-[#dcd6f7] border-2 border-black rounded-lg px-2.5 py-0.5 font-bold text-black text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
                             {spec.name}
                           </span>
                         ))}
@@ -426,7 +426,7 @@ export default function TeachersPage() {
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
                         {teacher.classes.map((cls) => (
-                          <span key={cls.id} className="bg-sky-100 border border-sky-300 rounded px-1.5 py-0.5 font-semibold text-sky-800 text-xs">
+                          <span key={cls.id} className="bg-sky-100 border border-sky-300 rounded px-1.5 py-0.5 font-semibold text-sky-800 text-xs whitespace-nowrap">
                             {cls.name}
                           </span>
                         ))}

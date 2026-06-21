@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
 import { RefreshCw } from "lucide-react";
+import { prisma } from "@/lib/prisma";
 import { EnrollFormClient } from "./components/enroll-form-client";
 
 export const metadata: Metadata = {
@@ -8,7 +9,24 @@ export const metadata: Metadata = {
   description: "Đăng ký lớp học vẽ sáng tạo cho bé từ 4-12 tuổi. Nhận tặng bộ họa cụ trị giá 250.000đ khi ghi danh.",
 };
 
-export default function EnrollPage() {
+export default async function EnrollPage() {
+  const courses = await prisma.course.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      title: true,
+      audience: true,
+      level: true,
+      classCategory: {
+        select: {
+          id: true,
+          name: true,
+        }
+      }
+    },
+    orderBy: { createdAt: "asc" }
+  });
+
   return (
     <main className="min-h-screen bg-[#fefaf0] py-12 px-4 md:px-8 bg-[radial-gradient(circle_at_2px_2px,#bec7d1_1px,transparent_0)] bg-[size:24px_24px]">
       <div className="max-w-4xl mx-auto space-y-10">
@@ -49,10 +67,11 @@ export default function EnrollPage() {
             <p className="font-bold text-gray-500 text-sm">Đang tải form đăng ký...</p>
           </div>
         }>
-          <EnrollFormClient />
+          <EnrollFormClient courses={courses} />
         </Suspense>
 
       </div>
     </main>
   );
 }
+

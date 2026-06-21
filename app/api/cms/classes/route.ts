@@ -27,6 +27,14 @@ export async function GET() {
             name: true,
           },
         },
+        course: {
+          select: {
+            id: true,
+            title: true,
+            fee: true,
+            feeUnit: true,
+          },
+        },
         _count: {
           select: {
             students: true,
@@ -67,6 +75,7 @@ export async function POST(req: Request) {
       startTime,
       endTime,
       schedules,
+      courseId,
     } = body;
 
     const dayOfWeekNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
@@ -83,7 +92,21 @@ export async function POST(req: Request) {
         .join(", ");
     }
 
-    if (!name || !finalSchedule) {
+    let finalClassName = name;
+    if (courseId) {
+      const course = await prisma.course.findUnique({
+        where: { id: courseId }
+      });
+      if (course) {
+        const count = await prisma.class.count({
+          where: { courseId }
+        });
+        const suffix = String(count + 1).padStart(2, '0');
+        finalClassName = `${course.title} ${suffix}`;
+      }
+    }
+
+    if (!finalClassName || !finalSchedule) {
       return NextResponse.json(
         { error: "Tên lớp học và lịch học không được để trống" },
         { status: 400 }
@@ -143,9 +166,10 @@ export async function POST(req: Request) {
     // 2. No conflict or no auto-schedule, proceed with Class creation
     const newClass = await prisma.class.create({
       data: {
-        name,
+        name: finalClassName,
         schedule: finalSchedule,
         room: room || null,
+        courseId: courseId || null,
         teachers: {
           connect: (teacherIds || []).map((id: string) => ({ id })),
         },
@@ -167,6 +191,14 @@ export async function POST(req: Request) {
           select: {
             id: true,
             name: true,
+          },
+        },
+        course: {
+          select: {
+            id: true,
+            title: true,
+            fee: true,
+            feeUnit: true,
           },
         },
         _count: {
@@ -242,6 +274,7 @@ export async function PUT(req: Request) {
       room,
       teacherIds,
       specialtyIds,
+      courseId,
     } = body;
 
     if (!name) {
@@ -257,6 +290,7 @@ export async function PUT(req: Request) {
         name,
         room: room || null,
         schedule: schedule || null,
+        courseId: courseId || null,
         teachers: {
           set: (teacherIds || []).map((tId: string) => ({ id: tId })),
         },
@@ -278,6 +312,14 @@ export async function PUT(req: Request) {
           select: {
             id: true,
             name: true,
+          },
+        },
+        course: {
+          select: {
+            id: true,
+            title: true,
+            fee: true,
+            feeUnit: true,
           },
         },
         _count: {

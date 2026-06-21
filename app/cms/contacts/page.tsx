@@ -143,7 +143,7 @@ export default function ContactsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-black text-gray-900 text-sm">{sub.name}</h3>
-                        <span className={`inline-flex items-center gap-1 border px-2 py-0.5 rounded-full text-[10px] font-black ${statusInfo.color}`}>
+                        <span className={`inline-flex items-center gap-1 border px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap ${statusInfo.color}`}>
                           {statusInfo.icon}{statusInfo.label}
                         </span>
                         {sub.status === "NEW" && (

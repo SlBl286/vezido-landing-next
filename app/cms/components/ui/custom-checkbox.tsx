@@ -51,7 +51,7 @@ export const CustomCheckbox = ({
           )}
         </div>
       </div>
-      {label && <span>{label}</span>}
+      {label && <span className="flex-1 min-w-0 break-words">{label}</span>}
     </label>
   );
 };

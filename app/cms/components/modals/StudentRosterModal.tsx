@@ -6,6 +6,8 @@ import { NotificationModal } from "./NotificationModal";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { cmsApi } from "@/lib/api-client";
 import { StudentRoster } from "@/lib/types/api";
+import { PaymentModal } from "./PaymentModal";
+import { CreditCard } from "lucide-react";
 
 interface StudentRosterModalProps {
   isOpen: boolean;
@@ -27,6 +29,8 @@ export function StudentRosterModal({
   const [error, setError] = useState("");
   const [registerMode, setRegisterMode] = useState<"new" | "existing">("new");
   const [selectedExistingId, setSelectedExistingId] = useState("");
+  const [session, setSession] = useState<any>(null);
+  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<any | null>(null);
 
   const [notification, setNotification] = useState<{
     isOpen: boolean;
@@ -66,6 +70,18 @@ export function StudentRosterModal({
     parentPhone: "",
     studentCode: ""
   });
+
+  useEffect(() => {
+    async function loadSession() {
+      try {
+        const data = await cmsApi.auth.getSession();
+        setSession(data);
+      } catch (err) {
+        console.error("Failed to load session in roster:", err);
+      }
+    }
+    loadSession();
+  }, []);
 
   useEffect(() => {
     if (isOpen && selectedClass?.id) {
@@ -232,8 +248,8 @@ export function StudentRosterModal({
               ) : (
                 <div className="max-h-[400px] overflow-y-auto pr-2 border-2 border-black/10 rounded-2xl p-2 space-y-2.5">
                   {students.map((student) => (
-                    <div key={student.id} className="border-2 border-black bg-[#fafafa] rounded-xl p-3 flex justify-between items-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                      <div>
+                    <div key={student.id} className="border-2 border-black bg-[#fafafa] rounded-xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] gap-4">
+                      <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-black text-gray-900 text-base">{student.studentName}</span>
                           {student.studentCode && (
@@ -245,17 +261,57 @@ export function StudentRosterModal({
                             {student.studentAge} tuổi
                           </span>
                         </div>
-                        <div className="mt-1 text-xs text-gray-600 font-medium">
+                        <div className="text-xs text-gray-600 font-medium">
                           Phụ huynh: <span className="font-bold text-gray-800">{student.parentName}</span> - SĐT: <span className="font-bold text-gray-800">{student.parentPhone}</span>
                         </div>
+                        
+                        <div className="text-xs font-bold text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+                          <span>Học phí:</span>
+                          {student.isPaid ? (
+                            <span className="text-emerald-700 bg-emerald-50 border border-emerald-300 rounded px-1.5 py-0.5 text-[10px] flex items-center gap-1 font-black">
+                              ✓ Đã thanh toán {student.amountPaid !== null ? `(${student.amountPaid.toLocaleString("vi-VN")} đ)` : ""}
+                              {student.discountCode && ` - Mã: ${student.discountCode}`}
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-rose-700 bg-rose-50 border border-rose-300 rounded px-1.5 py-0.5 text-[10px] flex items-center gap-1 font-black">
+                                ✗ Chưa đóng
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  const url = `${window.location.origin}/pay/${student.id}`;
+                                  navigator.clipboard.writeText(url);
+                                  showNotification("Đã sao chép 🔗", `Đã sao chép liên kết thanh toán của bé ${student.studentName} vào bộ nhớ tạm: \n${url}`, "success");
+                                }}
+                                className="text-[10px] text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded px-1.5 py-0.5 font-black transition-all cursor-pointer shadow-[1px_1px_0px_rgba(0,0,0,1)] active:translate-x-[0.5px] active:translate-y-[0.5px] active:shadow-none"
+                              >
+                                🔗 Sao chép link thanh toán
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteStudent(student.id, student.studentName)}
-                        className="p-2 bg-[#ffaaa6] hover:bg-[#ff8b94] border-2 border-black rounded-lg transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 text-black cursor-pointer"
-                        title="Xóa học sinh khỏi lớp"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      
+                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        {!student.isPaid && session?.user?.role === "ADMIN" && (
+                          <button
+                            onClick={() => setSelectedStudentForPayment(student)}
+                            className="flex items-center gap-1 bg-[#ffd275] hover:bg-[#ffc342] border-2 border-black rounded-lg px-2.5 py-1.5 text-xs font-black transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer"
+                          >
+                            <CreditCard className="w-3.5 h-3.5" />
+                            <span>Đóng học phí</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteStudent(student.id, student.studentName)}
+                          className="p-2 bg-[#ffaaa6] hover:bg-[#ff8b94] border-2 border-black rounded-lg transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 text-black cursor-pointer"
+                          title="Xóa học sinh khỏi lớp"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -420,6 +476,14 @@ export function StudentRosterModal({
           </div>
         </div>
       </div>
+
+      {/* MODAL: CHECKOUT / PAYMENT */}
+      <PaymentModal
+        isOpen={selectedStudentForPayment !== null}
+        onClose={() => setSelectedStudentForPayment(null)}
+        student={selectedStudentForPayment}
+        onSuccess={fetchStudents}
+      />
 
       <NotificationModal
         isOpen={notification.isOpen}

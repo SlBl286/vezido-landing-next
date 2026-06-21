@@ -166,6 +166,12 @@ export const cmsApi = {
     delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/students?id=${id}`, {
       method: "DELETE",
     }),
+
+    updatePayment: (id: string, data: { isPaid: boolean; amountPaid?: number | null; discountCode?: string | null; paymentDate?: string | null }) => fetchJson<{ student: any }>(`/api/cms/students?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
   },
 
   specialties: {
@@ -302,6 +308,35 @@ export const cmsApi = {
     delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/courses?id=${id}`, {
       method: "DELETE",
     }),
+    listCategories: () => fetchJson<{ categories: any[] }>("/api/cms/courses/categories"),
+    createCategory: (data: { name: string }) => fetchJson<{ category: any }>("/api/cms/courses/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    deleteCategory: (id: string) => fetchJson<{ message: string }>(`/api/cms/courses/categories?id=${id}`, {
+      method: "DELETE",
+    }),
+  },
+  promotions: {
+    list: () => fetchJson<{ promotions: any[] }>("/api/cms/promotions"),
+    create: (data: any) => fetchJson<{ promotion: any }>("/api/cms/promotions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: any) => fetchJson<{ promotion: any }>(`/api/cms/promotions?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/promotions?id=${id}`, {
+      method: "DELETE",
+    }),
+    verify: (code: string, amount: number) => fetchJson<{ valid: boolean; discountAmount: number; message?: string }>(`/api/cms/promotions/verify?code=${code}&amount=${amount}`),
+  },
+  invoices: {
+    list: () => fetchJson<{ invoices: any[]; stats: { totalRevenue: number; totalInvoices: number; courses: any[]; months: any[] } }>("/api/cms/invoices"),
   },
   settings: {
     get: () => fetchJson<{ settings: Record<string, string> }>("/api/cms/settings"),

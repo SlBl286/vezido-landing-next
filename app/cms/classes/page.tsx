@@ -20,6 +20,7 @@ export default function ClassesPage() {
   const [classes, setClasses] = useState<ClassWithTeachersAndCount[]>([]);
   const [teachers, setTeachers] = useState<TeacherWithUserAndClasses[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Modals & selected state
@@ -89,6 +90,9 @@ export default function ClassesPage() {
 
       const specsData = await cmsApi.specialties.list();
       setSpecialties(specsData.specialties || []);
+
+      const coursesData = await cmsApi.courses.list();
+      setCourses(coursesData.courses || []);
     } catch (err) {
       console.error("Failed to load classes and teachers:", err);
     } finally {
@@ -188,7 +192,14 @@ export default function ClassesPage() {
               {classes.map((cls) => (
                 <tr key={cls.id} className="border-b-2 border-gray-200 hover:bg-[#fff9ed] transition-colors">
                   <td className="py-4 px-4 font-bold text-gray-950">
-                    {cls.name}
+                    <div className="flex flex-col">
+                      <span>{cls.name}</span>
+                      {(cls as any).course && (
+                        <span className="text-[10px] text-amber-600 font-extrabold mt-0.5 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 w-fit">
+                          📖 {(cls as any).course.title}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-4 px-4 text-sm font-bold">
                     {cls.specialties && cls.specialties.length > 0 ? (
@@ -288,6 +299,7 @@ export default function ClassesPage() {
         onClose={() => setShowAddClassModal(false)}
         teachers={teachers}
         specialties={specialties}
+        courses={courses}
         onSuccess={fetchAllData}
       />
 
@@ -301,6 +313,7 @@ export default function ClassesPage() {
         classData={classToEdit}
         teachers={teachers}
         specialties={specialties}
+        courses={courses}
         onSuccess={fetchAllData}
       />
 

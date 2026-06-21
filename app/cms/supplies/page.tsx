@@ -453,7 +453,7 @@ export default function SuppliesPage() {
                       <tr key={item.id} className="hover:bg-amber-50/10 transition-colors">
                         <td className="p-4 font-bold text-black">{item.name}</td>
                         <td className="p-4">
-                          <span className="bg-[#dcd6f7] border-2 border-black text-black font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-md">
+                          <span className="bg-[#dcd6f7] border-2 border-black text-black font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-md whitespace-nowrap">
                             {item.category}
                           </span>
                         </td>
@@ -552,11 +552,11 @@ export default function SuppliesPage() {
                       <td className="p-4 font-bold text-black">{tx.item?.name || "Vật phẩm đã xóa"}</td>
                       <td className="p-4">
                         {tx.type === "IMPORT" ? (
-                          <span className="bg-[#a8e6cf] border-2 border-black text-black font-extrabold text-[10px] px-2 py-0.5 rounded shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                          <span className="bg-[#a8e6cf] border-2 border-black text-black font-extrabold text-[10px] px-2 py-0.5 rounded shadow-[1px_1px_0px_rgba(0,0,0,1)] whitespace-nowrap">
                             📥 NHẬP KHO
                           </span>
                         ) : (
-                          <span className="bg-[#ffaaa6] border-2 border-black text-black font-extrabold text-[10px] px-2 py-0.5 rounded shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                          <span className="bg-[#ffaaa6] border-2 border-black text-black font-extrabold text-[10px] px-2 py-0.5 rounded shadow-[1px_1px_0px_rgba(0,0,0,1)] whitespace-nowrap">
                             📤 XUẤT DÙNG
                           </span>
                         )}

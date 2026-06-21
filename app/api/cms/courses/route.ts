@@ -14,6 +14,7 @@ export async function GET() {
 
   try {
     const courses = await prisma.course.findMany({
+      include: { classCategory: true },
       orderBy: { createdAt: "asc" }
     });
     return NextResponse.json({ courses });
@@ -31,10 +32,10 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { title, type, audience, duration, fee, feeUnit, feeNote, objectives, content, benefits, isActive } = body;
+    const { title, type, audience, duration, fee, feeUnit, feeNote, objectives, content, benefits, isActive, classCategoryId, level } = body;
 
-    if (!title || !title.trim() || !type || !audience || !duration || fee === undefined) {
-      return NextResponse.json({ error: "Vui lòng nhập các trường bắt buộc: Tên, loại, đối tượng, thời lượng và học phí" }, { status: 400 });
+    if (!title || !title.trim() || !audience || !duration || fee === undefined) {
+      return NextResponse.json({ error: "Vui lòng nhập các trường bắt buộc: Tên, đối tượng, thời lượng và học phí" }, { status: 400 });
     }
 
     const trimmedTitle = title.trim();
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     const course = await prisma.course.create({
       data: {
         title: trimmedTitle,
-        type,
+        type: type || null,
         audience: audience.trim(),
         duration: duration.trim(),
         fee: Number(fee),
@@ -60,8 +61,11 @@ export async function POST(req: Request) {
         objectives: Array.isArray(objectives) ? objectives.map((o: string) => o.trim()).filter(Boolean) : [],
         content: Array.isArray(content) ? content.map((c: string) => c.trim()).filter(Boolean) : [],
         benefits: Array.isArray(benefits) ? benefits.map((b: string) => b.trim()).filter(Boolean) : [],
-        isActive: isActive !== undefined ? Boolean(isActive) : true
-      }
+        isActive: isActive !== undefined ? Boolean(isActive) : true,
+        classCategoryId: classCategoryId || null,
+        level: level?.trim() || null
+      },
+      include: { classCategory: true }
     });
 
     return NextResponse.json({ course }, { status: 201 });
@@ -86,9 +90,9 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { title, type, audience, duration, fee, feeUnit, feeNote, objectives, content, benefits, isActive } = body;
+    const { title, type, audience, duration, fee, feeUnit, feeNote, objectives, content, benefits, isActive, classCategoryId, level } = body;
 
-    if (!title || !title.trim() || !type || !audience || !duration || fee === undefined) {
+    if (!title || !title.trim() || !audience || !duration || fee === undefined) {
       return NextResponse.json({ error: "Vui lòng nhập các trường bắt buộc" }, { status: 400 });
     }
 
@@ -110,7 +114,7 @@ export async function PUT(req: Request) {
       where: { id },
       data: {
         title: trimmedTitle,
-        type,
+        type: type || null,
         audience: audience.trim(),
         duration: duration.trim(),
         fee: Number(fee),
@@ -119,8 +123,11 @@ export async function PUT(req: Request) {
         objectives: Array.isArray(objectives) ? objectives.map((o: string) => o.trim()).filter(Boolean) : [],
         content: Array.isArray(content) ? content.map((c: string) => c.trim()).filter(Boolean) : [],
         benefits: Array.isArray(benefits) ? benefits.map((b: string) => b.trim()).filter(Boolean) : [],
-        isActive: isActive !== undefined ? Boolean(isActive) : true
-      }
+        isActive: isActive !== undefined ? Boolean(isActive) : true,
+        classCategoryId: classCategoryId || null,
+        level: level?.trim() || null
+      },
+      include: { classCategory: true }
     });
 
     return NextResponse.json({ course });

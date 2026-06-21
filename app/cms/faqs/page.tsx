@@ -409,7 +409,7 @@ export default function FaqsPage() {
                 <div className="space-y-3 overflow-hidden flex flex-col justify-start">
                   {/* FAQ Top Actions Row */}
                   <div className="flex justify-between items-center shrink-0">
-                    <span className={`text-[10px] border-2 border-black px-2 py-0.5 rounded-lg font-black uppercase tracking-wider ${getCategoryStyle(faq.category)}`}>
+                    <span className={`text-[10px] border-2 border-black px-2 py-0.5 rounded-lg font-black uppercase tracking-wider whitespace-nowrap ${getCategoryStyle(faq.category)}`}>
                       {faq.category}
                     </span>
                     

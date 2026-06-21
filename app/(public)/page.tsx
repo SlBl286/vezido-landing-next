@@ -29,6 +29,7 @@ export default async function Home() {
   // Fetch active courses
   const dbCourses = await prisma.course.findMany({
     where: { isActive: true },
+    include: { classCategory: true },
     orderBy: { createdAt: "asc" }
   });
 
@@ -148,24 +149,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* STATISTICS & TRUST ELEMENTS */}
-      <section className="py-8 bg-sky-100 border-b-4 border-black">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {stats.map((stat, i) => (
-              <div 
-                key={i} 
-                className={`p-3 border-2 border-black bg-white rounded-xl shadow-[3px_3px_0px_rgba(0,0,0,1)] ${
-                  i % 2 === 0 ? "rotate-1" : "-rotate-1"
-                }`}
-              >
-                <p className="text-2xl md:text-3xl font-black text-sky-600">{stat.count}</p>
-                <p className="text-[10px] font-black text-gray-500 mt-1 uppercase tracking-wide">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ABOUT US DETAIL SECTION */}
       <section className="py-16 px-4 md:px-8 border-b-4 border-black bg-white">
@@ -354,11 +337,18 @@ export default async function Home() {
                 }`}
               >
                 <div className="p-6 space-y-4">
-                  <span className={`inline-block text-[9px] border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wide ${
-                    course.type === "AGE_BASED" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"
-                  }`}>
-                    {course.type === "AGE_BASED" ? "👶 Theo độ tuổi" : "🎨 Chuyên đề"}
-                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {course.classCategory && (
+                      <span className="inline-block text-[9px] border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wide bg-blue-100 text-blue-800">
+                        🏷️ {course.classCategory.name}
+                      </span>
+                    )}
+                    {course.level && (
+                      <span className="inline-block text-[9px] border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wide bg-[#ffd275] text-amber-950">
+                        ⚡ {course.level}
+                      </span>
+                    )}
+                  </div>
                   <h3 className="text-2xl font-black text-gray-900 leading-snug">{course.title}</h3>
                   <p className="text-xs font-semibold text-gray-500 leading-relaxed line-clamp-3">
                     {course.audience}

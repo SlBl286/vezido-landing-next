@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Plus, Edit2, Trash2, Loader2, X, PlusCircle, MinusCircle, BookOpen, AlertTriangle } from "lucide-react";
+import React, { useEffect, useState, useMemo } from "react";
+import { Plus, Edit2, Trash2, Loader2, X, PlusCircle, MinusCircle, BookOpen, AlertTriangle, Layers, Tag } from "lucide-react";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
@@ -12,6 +12,18 @@ export default function CoursesManagerPage() {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<any>(null);
 
+  // Categories management
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
+
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategoryId, setFilterCategoryId] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+
   // Modal control states
   const [showAddEditModal, setShowAddEditModal] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
@@ -21,18 +33,39 @@ export default function CoursesManagerPage() {
     title: "",
     type: "AGE_BASED",
     audience: "",
-    duration: "12 buổi / khóa",
+    duration: "12",
     fee: "",
     feeUnit: "buổi",
     feeNote: "đã bao gồm họa cụ",
     objectives: [""] as string[],
     content: [""] as string[],
     benefits: [""] as string[],
-    isActive: true
+    isActive: true,
+    classCategoryId: "",
+    level: ""
   });
   
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const filteredCourses = useMemo(() => {
+    return courses.filter(course => {
+      const matchesSearch = 
+        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (course.audience && course.audience.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesCategory = 
+        filterCategoryId === "ALL" || 
+        course.classCategoryId === filterCategoryId;
+      
+      const matchesStatus = 
+        filterStatus === "ALL" ||
+        (filterStatus === "ACTIVE" && course.isActive) ||
+        (filterStatus === "INACTIVE" && !course.isActive);
+      
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [courses, searchTerm, filterCategoryId, filterStatus]);
 
   // Notification State
   const [notification, setNotification] = useState<{
@@ -78,9 +111,22 @@ export default function CoursesManagerPage() {
     }
   };
 
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const data = await cmsApi.courses.listCategories();
+      setCategories(data.categories || []);
+    } catch (err: any) {
+      console.error("Failed to load classifications:", err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
   useEffect(() => {
     fetchSession();
     fetchCourses();
+    fetchCategories();
   }, []);
 
   const isAdmin = session?.user?.role === "ADMIN";
@@ -91,14 +137,16 @@ export default function CoursesManagerPage() {
       title: "",
       type: "AGE_BASED",
       audience: "",
-      duration: "12 buổi / khóa",
+      duration: "12",
       fee: "",
       feeUnit: "buổi",
       feeNote: "đã bao gồm họa cụ",
       objectives: [""],
       content: [""],
       benefits: [""],
-      isActive: true
+      isActive: true,
+      classCategoryId: categories[0]?.id || "",
+      level: ""
     });
     setError("");
     setShowAddEditModal(true);
@@ -108,19 +156,55 @@ export default function CoursesManagerPage() {
     setSelectedCourse(course);
     setForm({
       title: course.title,
-      type: course.type,
+      type: course.type || "AGE_BASED",
       audience: course.audience,
-      duration: course.duration,
+      duration: course.duration ? String(parseInt(course.duration, 10) || 12) : "12",
       fee: String(course.fee),
       feeUnit: course.feeUnit || "buổi",
       feeNote: course.feeNote || "",
       objectives: course.objectives?.length > 0 ? [...course.objectives] : [""],
       content: course.content?.length > 0 ? [...course.content] : [""],
       benefits: course.benefits?.length > 0 ? [...course.benefits] : [""],
-      isActive: course.isActive
+      isActive: course.isActive,
+      classCategoryId: course.classCategoryId || "",
+      level: course.level || ""
     });
     setError("");
     setShowAddEditModal(true);
+  };
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    setAddingCategory(true);
+    try {
+      await cmsApi.courses.createCategory({ name: newCategoryName });
+      setNewCategoryName("");
+      showNotification("Thành công 🎉", "Đã thêm phân loại lớp mới thành công.", "success");
+      fetchCategories();
+    } catch (err: any) {
+      showNotification("Lỗi", err.message || "Không thể thêm phân loại lớp", "error");
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    showNotification(
+      "Xác nhận xóa phân loại 🗑️",
+      `Bạn có chắc chắn muốn xóa phân loại "${name}"? Các khóa học thuộc phân loại này sẽ chuyển về chưa phân loại.`,
+      "confirm",
+      async () => {
+        try {
+          await cmsApi.courses.deleteCategory(id);
+          showNotification("Thành công", "Đã xóa phân loại thành công", "success");
+          fetchCategories();
+          fetchCourses();
+        } catch (err: any) {
+          showNotification("Lỗi", err.message || "Không thể xóa phân loại", "error");
+        }
+      }
+    );
   };
 
   const handleDeleteCourse = (id: string, title: string) => {
@@ -176,7 +260,9 @@ export default function CoursesManagerPage() {
       fee: Number(form.fee),
       objectives: form.objectives.filter(o => o.trim().length > 0),
       content: form.content.filter(c => c.trim().length > 0),
-      benefits: form.benefits.filter(b => b.trim().length > 0)
+      benefits: form.benefits.filter(b => b.trim().length > 0),
+      classCategoryId: form.classCategoryId || null,
+      level: form.level.trim() || null
     };
 
     try {
@@ -207,6 +293,11 @@ export default function CoursesManagerPage() {
     );
   }
 
+  const categoryOptions = categories.map(cat => ({
+    value: cat.id,
+    label: cat.name
+  }));
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Page Title Neobrutalism Header */}
@@ -220,26 +311,74 @@ export default function CoursesManagerPage() {
           </p>
         </div>
         {isAdmin && (
-          <button
-            onClick={handleOpenAdd}
-            className="bg-white hover:bg-stone-50 text-black border-3 border-black font-black text-sm px-5 py-3 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] flex items-center gap-1.5 cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Thêm khóa học mới</span>
-          </button>
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <button
+              onClick={() => setShowCategoryModal(true)}
+              className="bg-[#ffd275] hover:bg-[#ffc342] text-black border-3 border-black font-black text-sm px-5 py-3 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] flex items-center gap-1.5 cursor-pointer"
+            >
+              <Layers className="w-4 h-4" />
+              <span>Quản lý phân loại lớp</span>
+            </button>
+            <button
+              onClick={handleOpenAdd}
+              className="bg-white hover:bg-stone-50 text-black border-3 border-black font-black text-sm px-5 py-3 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Thêm khóa học mới</span>
+            </button>
+          </div>
         )}
+      </div>
+
+      {/* Search & Filter Controls */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-white border-4 border-black rounded-3xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+        <div>
+          <label className="block text-xs font-black text-gray-700 mb-1.5 uppercase">Tìm kiếm khóa học</label>
+          <input
+            type="text"
+            placeholder="Tìm theo tên khóa học, đối tượng..."
+            className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-xs focus:outline-none focus:bg-white transition-colors"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-xs font-black text-gray-700 mb-1.5 uppercase">Lọc theo phân loại lớp</label>
+          <CustomSelect
+            value={filterCategoryId}
+            onChange={(val) => setFilterCategoryId(val)}
+            options={[
+              { value: "ALL", label: "-- Tất cả phân loại --" },
+              ...categoryOptions
+            ]}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-black text-gray-700 mb-1.5 uppercase">Trạng thái hiển thị</label>
+          <CustomSelect
+            value={filterStatus}
+            onChange={(val) => setFilterStatus(val)}
+            options={[
+              { value: "ALL", label: "Tất cả trạng thái" },
+              { value: "ACTIVE", label: "Hoạt động (Đang hiện)" },
+              { value: "INACTIVE", label: "Ẩn" }
+            ]}
+          />
+        </div>
       </div>
 
       {/* Courses List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {courses.length === 0 ? (
+        {filteredCourses.length === 0 ? (
           <div className="col-span-2 border-4 border-dashed border-black/10 bg-white rounded-3xl p-12 text-center">
             <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-black text-lg">Chưa có khóa học nào được đăng ký</p>
-            <p className="text-gray-400 text-sm mt-1">Vui lòng nhấp nút "Thêm khóa học mới" để khởi tạo.</p>
+            <p className="text-gray-500 font-black text-lg">Không tìm thấy khóa học nào phù hợp</p>
+            <p className="text-gray-400 text-sm mt-1">Vui lòng thử lại với bộ lọc hoặc từ khóa tìm kiếm khác.</p>
           </div>
         ) : (
-          courses.map(course => (
+          filteredCourses.map(course => (
             <div
               key={course.id}
               className={`border-4 border-black bg-white rounded-[30px_10px_25px_10px/10px_25px_10px_30px] p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between transition-all ${
@@ -249,11 +388,22 @@ export default function CoursesManagerPage() {
               <div className="space-y-3">
                 {/* Course Header */}
                 <div className="flex items-center justify-between">
-                  <span className={`text-[9px] border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wider ${
-                    course.type === "AGE_BASED" ? "bg-[#bae1ff]" : "bg-[#ffc6ff]"
-                  }`}>
-                    {course.type === "AGE_BASED" ? "👶 Theo độ tuổi" : "🎨 Chuyên đề"}
-                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {course.classCategory ? (
+                      <span className="text-[9px] border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wider bg-[#bae1ff] whitespace-nowrap">
+                        🏷️ {course.classCategory.name}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wider bg-[#e2e8f0] text-gray-500 whitespace-nowrap">
+                        Chưa phân loại
+                      </span>
+                    )}
+                    {course.level && (
+                      <span className="text-[9px] border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wider bg-[#ffd275] whitespace-nowrap">
+                        ⚡ {course.level}
+                      </span>
+                    )}
+                  </div>
                   
                   <div className="flex items-center gap-1">
                     <span className={`w-2.5 h-2.5 rounded-full border border-black ${course.isActive ? "bg-emerald-400" : "bg-stone-300"}`} />
@@ -264,13 +414,12 @@ export default function CoursesManagerPage() {
                 <h3 className="text-xl font-black text-black leading-snug">
                   {course.title}
                 </h3>
-
-                <p className="text-xs font-semibold text-gray-600">
+        <p className="text-xs font-semibold text-gray-600">
                   <strong className="font-extrabold text-black">Đối tượng:</strong> {course.audience}
                 </p>
 
                 <p className="text-xs font-semibold text-gray-600">
-                  <strong className="font-extrabold text-black">Thời lượng:</strong> {course.duration}
+                  <strong className="font-extrabold text-black">Thời lượng:</strong> {course.duration ? (String(course.duration).includes("buổi") ? course.duration : `${course.duration} buổi`) : ""}
                 </p>
 
                 <p className="text-xs font-semibold text-gray-600">
@@ -346,7 +495,7 @@ export default function CoursesManagerPage() {
                   <input
                     type="text"
                     required
-                    placeholder="Ví dụ: 🌱 LỚP MẦM [4-7 TUỔI]"
+                    placeholder="Ví dụ: ACRYLIC phong cảnh"
                     className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
                     value={form.title}
                     onChange={e => setForm({ ...form, title: e.target.value })}
@@ -354,16 +503,24 @@ export default function CoursesManagerPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-800 mb-1">Dạng lớp học *</label>
+                  <label className="block text-xs font-black text-gray-800 mb-1">Phân loại lớp *</label>
                   <CustomSelect
-                    value={form.type}
-                    onChange={val => setForm({ ...form, type: val })}
-                    options={[
-                      { value: "AGE_BASED", label: "Theo độ tuổi" },
-                      { value: "SPECIALIZED", label: "Chuyên đề nghệ thuật" }
-                    ]}
+                    value={form.classCategoryId}
+                    onChange={val => setForm({ ...form, classCategoryId: val })}
+                    options={categoryOptions}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Cấp độ / Level (Ví dụ: Level 1, Level 2...)</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Level 1, Level 2, Nâng cao..."
+                  className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                  value={form.level}
+                  onChange={e => setForm({ ...form, level: e.target.value })}
+                />
               </div>
 
               <div>
@@ -405,12 +562,13 @@ export default function CoursesManagerPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-800 mb-1">Thời lượng *</label>
+                  <label className="block text-xs font-black text-gray-800 mb-1">Thời lượng (Số buổi) *</label>
                   <input
-                    type="text"
+                    type="number"
                     required
-                    placeholder="Ví dụ: 12 buổi / khóa"
-                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                    min="1"
+                    placeholder="Ví dụ: 12"
+                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-black text-black focus:outline-none text-xs"
                     value={form.duration}
                     onChange={e => setForm({ ...form, duration: e.target.value })}
                   />
@@ -573,6 +731,69 @@ export default function CoursesManagerPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CLASS CATEGORIES MANAGEMENT MODAL */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white border-4 border-black rounded-[35px_15px_30px_10px/10px_30px_15px_35px] max-w-md w-full p-6 shadow-[8px_8px_0px_rgba(0,0,0,1)] relative my-8 animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowCategoryModal(false)}
+              className="absolute top-4 right-4 bg-[#ffaaa6] hover:bg-[#ff8b94] border-2 border-black rounded-full p-1.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer z-10"
+            >
+              <X className="w-4 h-4 text-black" />
+            </button>
+
+            <h3 className="text-xl font-black text-black mb-1 flex items-center gap-2">
+              🏷️ Quản Lý Phân Loại Lớp
+            </h3>
+            <p className="text-gray-500 text-xs mb-6">Thêm mới hoặc loại bỏ các phân loại lớp (LỚP MẦM, LỚP CHỒI, LỚP LÁ, v.v.).</p>
+
+            <form onSubmit={handleCreateCategory} className="flex gap-2 mb-6">
+              <input
+                type="text"
+                required
+                placeholder="Tên phân loại mới (Ví dụ: DIGITAL ART)"
+                className="flex-1 border-3 border-black rounded-xl p-2 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+              />
+              <button
+                type="submit"
+                disabled={addingCategory}
+                className="bg-[#ffd275] hover:bg-[#ffc342] border-3 border-black rounded-xl px-4 py-2 font-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer disabled:opacity-50"
+              >
+                {addingCategory ? "Đang thêm..." : "Thêm mới"}
+              </button>
+            </form>
+
+            <div className="border-t border-black/15 pt-4">
+              <p className="text-xs font-black text-gray-400 mb-3 uppercase tracking-wider">Danh sách phân loại hiện tại:</p>
+              {loadingCategories ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+                </div>
+              ) : categories.length === 0 ? (
+                <p className="text-gray-400 text-xs italic text-center py-4">Chưa có phân loại nào được tạo.</p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {categories.map(cat => (
+                    <div key={cat.id} className="flex items-center justify-between border-2 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-xs">
+                      <span>🏷️ {cat.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                        className="text-rose-500 hover:text-rose-600 font-extrabold cursor-pointer text-[10px] border border-transparent hover:border-black rounded px-1.5 py-0.5"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -93,6 +93,13 @@ export async function GET(req: Request) {
 
     const students = await prisma.studentClass.findMany({
       where: { classId: classId! },
+      include: {
+        class: {
+          include: {
+            course: true,
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -259,6 +266,45 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ message: "Student deleted successfully" });
   } catch (error) {
     console.error("Error deleting student:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  const session = await auth();
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const role = (session.user as any).role;
+  if (role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const { isPaid, amountPaid, discountCode, paymentDate } = body;
+
+    const student = await prisma.studentClass.update({
+      where: { id },
+      data: {
+        isPaid: isPaid !== undefined ? Boolean(isPaid) : undefined,
+        amountPaid: amountPaid !== undefined ? (amountPaid !== null ? Number(amountPaid) : null) : undefined,
+        discountCode: discountCode !== undefined ? (discountCode || null) : undefined,
+        paymentDate: paymentDate !== undefined ? (paymentDate ? new Date(paymentDate) : null) : undefined,
+      },
+    });
+
+    return NextResponse.json({ student });
+  } catch (error) {
+    console.error("Error updating student payment:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
