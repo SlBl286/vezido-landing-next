@@ -199,6 +199,14 @@ export default function SettingsManagerPage() {
     });
   };
 
+  const handleAddTeacher = () => {
+    setTeachers(prev => [...prev, { name: "", role: "", avatar: "", achievements: [] }]);
+  };
+
+  const handleRemoveTeacher = (idx: number) => {
+    setTeachers(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const handleUpdateGalleryImage = (idx: number, val: string) => {
     setGalleryImages(prev => {
       const copy = [...prev];
@@ -401,79 +409,102 @@ export default function SettingsManagerPage() {
         {/* Tab 3: Teachers Team */}
         {activeTab === "teachers" && (
           <div className="space-y-6 animate-in fade-in duration-100">
-            <h3 className="text-lg font-black text-black">👩‍🏫 ĐỘI NGŨ SÁNG LẬP & GIÁO VIÊN (Landing page)</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-black">👩‍🏫 ĐỘI NGŨ SÁNG LẬP & GIÁO VIÊN (Landing page)</h3>
+              <button
+                type="button"
+                onClick={handleAddTeacher}
+                className="text-xs font-black text-sky-600 hover:text-sky-700 flex items-center gap-0.5 cursor-pointer bg-white border-2 border-black rounded-lg px-2.5 py-1.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[0.5px] active:translate-y-[0.5px]"
+              >
+                <PlusCircle className="w-3.5 h-3.5" /> Thêm giáo viên hiển thị
+              </button>
+            </div>
             
-            {teachers.map((teacher, tIdx) => (
-              <div key={tIdx} className="border-3 border-black rounded-2xl p-4 bg-stone-50 space-y-4 shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-black text-gray-800 mb-1">Tên giáo viên *</label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full border-2 border-black rounded-lg p-2 bg-white font-bold text-black focus:outline-none text-xs"
-                      value={teacher.name}
-                      onChange={e => handleUpdateTeacher(tIdx, "name", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black text-gray-800 mb-1">Vai trò hiển thị *</label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full border-2 border-black rounded-lg p-2 bg-white font-bold text-black focus:outline-none text-xs"
-                      value={teacher.role}
-                      onChange={e => handleUpdateTeacher(tIdx, "role", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black text-gray-800 mb-1">Đường dẫn ảnh chân dung (Avatar URL) *</label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full border-2 border-black rounded-lg p-2 bg-white font-bold text-black focus:outline-none text-xs"
-                      value={teacher.avatar}
-                      onChange={e => handleUpdateTeacher(tIdx, "avatar", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Achievements List */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-gray-800">📋 Thành tựu & Kinh nghiệm (Gạch đầu dòng)</label>
+            {teachers.length === 0 ? (
+              <p className="text-center font-bold text-gray-400 italic py-6">Chưa có giáo viên nào được cấu hình hiển thị ngoài trang chủ.</p>
+            ) : (
+              teachers.map((teacher, tIdx) => (
+                <div key={tIdx} className="border-3 border-black rounded-2xl p-4 bg-stone-50 space-y-4 shadow-[3px_3px_0px_rgba(0,0,0,1)] relative">
+                  <div className="flex justify-between items-center border-b border-black/10 pb-2">
+                    <span className="text-xs font-black text-gray-500">Giáo viên #{tIdx + 1}</span>
                     <button
                       type="button"
-                      onClick={() => handleAddTeacherAchievement(tIdx)}
-                      className="text-xs font-black text-sky-600 hover:text-sky-700 flex items-center gap-0.5 cursor-pointer"
+                      onClick={() => handleRemoveTeacher(tIdx)}
+                      className="text-xs font-black text-rose-600 hover:text-rose-700 flex items-center gap-0.5 cursor-pointer"
                     >
-                      <PlusCircle className="w-3.5 h-3.5" /> Thêm gạch đầu dòng
+                      <MinusCircle className="w-4.5 h-4.5" /> Xóa giáo viên này
                     </button>
                   </div>
-                  <div className="space-y-1.5">
-                    {teacher.achievements?.map((ach, aIdx) => (
-                      <div key={aIdx} className="flex gap-2 items-center">
-                        <input
-                          type="text"
-                          required
-                          placeholder="Mô tả thành tựu / kinh nghiệm..."
-                          className="flex-1 border-2 border-black rounded-lg p-2 bg-white font-medium text-black focus:outline-none text-xs"
-                          value={ach}
-                          onChange={e => handleUpdateTeacherAchievement(tIdx, aIdx, e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTeacherAchievement(tIdx, aIdx)}
-                          className="text-rose-500 hover:text-rose-600 cursor-pointer p-1"
-                        >
-                          <MinusCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-black text-gray-800 mb-1">Tên giáo viên *</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full border-2 border-black rounded-lg p-2 bg-white font-bold text-black focus:outline-none text-xs"
+                        value={teacher.name}
+                        onChange={e => handleUpdateTeacher(tIdx, "name", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-gray-800 mb-1">Vai trò hiển thị *</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full border-2 border-black rounded-lg p-2 bg-white font-bold text-black focus:outline-none text-xs"
+                        value={teacher.role}
+                        onChange={e => handleUpdateTeacher(tIdx, "role", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-gray-800 mb-1">Đường dẫn ảnh chân dung (Avatar URL) *</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full border-2 border-black rounded-lg p-2 bg-white font-bold text-black focus:outline-none text-xs"
+                        value={teacher.avatar}
+                        onChange={e => handleUpdateTeacher(tIdx, "avatar", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Achievements List */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-gray-800">📋 Thành tựu & Kinh nghiệm (Gạch đầu dòng)</label>
+                      <button
+                        type="button"
+                        onClick={() => handleAddTeacherAchievement(tIdx)}
+                        className="text-xs font-black text-sky-600 hover:text-sky-700 flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" /> Thêm gạch đầu dòng
+                      </button>
+                    </div>
+                    <div className="space-y-1.5">
+                      {teacher.achievements?.map((ach, aIdx) => (
+                        <div key={aIdx} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            required
+                            placeholder="Mô tả thành tựu / kinh nghiệm..."
+                            className="flex-1 border-2 border-black rounded-lg p-2 bg-white font-medium text-black focus:outline-none text-xs"
+                            value={ach}
+                            onChange={e => handleUpdateTeacherAchievement(tIdx, aIdx, e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTeacherAchievement(tIdx, aIdx)}
+                            className="text-rose-500 hover:text-rose-600 cursor-pointer p-1"
+                          >
+                            <MinusCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
 
