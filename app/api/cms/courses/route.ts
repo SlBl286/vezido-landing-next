@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { title, type, audience, duration, fee, feeUnit, feeNote, objectives, content, benefits, isActive, classCategoryId, level } = body;
+    const { title, type, audience, duration, fee, feeUnit, feeNote, objectives, content, benefits, isActive, classCategoryId, level, studyType } = body;
 
     if (!title || !title.trim() || !audience || !duration || fee === undefined) {
       return NextResponse.json({ error: "Vui lòng nhập các trường bắt buộc: Tên, đối tượng, thời lượng và học phí" }, { status: 400 });
@@ -63,7 +63,8 @@ export async function POST(req: Request) {
         benefits: Array.isArray(benefits) ? benefits.map((b: string) => b.trim()).filter(Boolean) : [],
         isActive: isActive !== undefined ? Boolean(isActive) : true,
         classCategoryId: classCategoryId || null,
-        level: level?.trim() || null
+        level: level?.trim() || null,
+        studyType: studyType?.trim() || "BY_COURSE"
       },
       include: { classCategory: true }
     });
@@ -90,7 +91,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { title, type, audience, duration, fee, feeUnit, feeNote, objectives, content, benefits, isActive, classCategoryId, level } = body;
+    const { title, type, audience, duration, fee, feeUnit, feeNote, objectives, content, benefits, isActive, classCategoryId, level, studyType } = body;
 
     if (!title || !title.trim() || !audience || !duration || fee === undefined) {
       return NextResponse.json({ error: "Vui lòng nhập các trường bắt buộc" }, { status: 400 });
@@ -125,7 +126,8 @@ export async function PUT(req: Request) {
         benefits: Array.isArray(benefits) ? benefits.map((b: string) => b.trim()).filter(Boolean) : [],
         isActive: isActive !== undefined ? Boolean(isActive) : true,
         classCategoryId: classCategoryId || null,
-        level: level?.trim() || null
+        level: level?.trim() || null,
+        studyType: studyType?.trim() || "BY_COURSE"
       },
       include: { classCategory: true }
     });

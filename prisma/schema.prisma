@@ -125,6 +125,9 @@ model StudentClass {
   discountCode       String?
   paymentDate        DateTime?
   sepayTransactionId String?      @unique
+  paymentMethod      String?      // CASH, TRANSFER, ONLINE
+  paymentProof       String?      // Đường dẫn ảnh chụp chuyển khoản
+  customDuration     Int?         // Số buổi học tùy chỉnh (nếu học 1 nửa số buổi của khóa...)
   attendance         Attendance[]
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
@@ -297,6 +300,7 @@ model Course {
   content         String[]       // Nội dung lộ trình từng buổi
   benefits        String[]       // Ưu đãi / Khuyến mãi
   isActive        Boolean        @default(true) // Trạng thái hiển thị ngoài landing page
+  studyType       String         @default("BY_COURSE") // "BY_MONTH" hoặc "BY_COURSE"
   classes         Class[]
   classCategoryId String?
   classCategory   ClassCategory? @relation(fields: [classCategoryId], references: [id], onDelete: SetNull)
@@ -326,6 +330,21 @@ model Promotion {
   isActive      Boolean   @default(true)
   maxUses       Int?      // Số lần sử dụng tối đa
   usedCount     Int       @default(0) // Số lần đã sử dụng
+  isStackable   Boolean   @default(false) // Có được áp dụng chung với nhiều mã khác không
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+model Expense {
+  id                  String   @id @default(cuid())
+  title               String   // Tên khoản chi
+  amount              Float    // Số tiền chi
+  category            String   // Phân loại: "Vận hành", "Mặt bằng", "Lương", "Marketing", "Họa cụ", "Khác"
+  date                DateTime @default(now()) // Ngày chi tiêu
+  description         String?  @db.Text // Ghi chú chi tiết
+  invoices            String[] // Danh sách đường dẫn ảnh hóa đơn
+  supplyTransactionId String?  // Liên kết giao dịch kho (nếu có)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+

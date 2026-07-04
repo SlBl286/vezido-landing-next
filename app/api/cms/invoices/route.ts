@@ -31,10 +31,67 @@ export async function GET() {
       },
     });
 
-    // 1. Calculate general stats
+    // Fetch all general expenses
+    const generalExpenses = await prisma.expense.findMany({
+      orderBy: {
+        date: "desc"
+      }
+    });
+
+    const syncedTransactionIds = generalExpenses
+      .map(e => e.supplyTransactionId)
+      .filter(Boolean) as string[];
+
+    // Fetch all supply import transactions that cost money and are not yet synced/copied
+    const supplyTransactions = await prisma.supplyTransaction.findMany({
+      where: {
+        type: "IMPORT",
+        totalCost: { gt: 0 },
+        id: { notIn: syncedTransactionIds }
+      },
+      include: {
+        item: true
+      },
+      orderBy: {
+        date: "desc"
+      }
+    });
+
+    // Map general expenses
+    const mappedGeneralExpenses = generalExpenses.map(e => ({
+      id: e.id,
+      title: e.title,
+      amount: e.amount,
+      category: e.category,
+      date: e.date,
+      description: e.description,
+      invoices: e.invoices || [],
+      isReadOnly: !!e.supplyTransactionId
+    }));
+
+    // Map supply transactions
+    const mappedSupplyExpenses = supplyTransactions.map(tx => ({
+      id: tx.id,
+      title: `Nhập họa cụ: ${tx.item?.name || "Họa cụ"} (x${tx.quantity} ${tx.item?.unit || "cái"})`,
+      amount: tx.totalCost || 0,
+      category: "Họa cụ",
+      date: tx.date,
+      description: tx.purpose || "Tự động ghi nhận từ Quản lý Kho họa cụ",
+      invoices: tx.invoices || [],
+      isReadOnly: true
+    }));
+
+    // Combine all expenses
+    const allExpenses = [...mappedGeneralExpenses, ...mappedSupplyExpenses].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    // Calculate general stats
     let totalRevenue = 0;
+    let totalExpense = 0;
     const courseBreakdown: Record<string, { title: string; count: number; revenue: number }> = {};
-    const monthlyBreakdown: Record<string, { label: string; revenue: number }> = {};
+    const expenseCategoryBreakdown: Record<string, { category: string; revenue: number }> = {};
+    const monthlyBreakdown: Record<string, { label: string; revenue: number; expense: number; profit: number }> = {};
 
     paidStudents.forEach((student) => {
       const amount = student.amountPaid || 0;
@@ -62,13 +119,52 @@ export async function GET() {
         monthlyBreakdown[monthKey] = {
           label: monthLabel,
           revenue: 0,
+          expense: 0,
+          profit: 0
         };
       }
       monthlyBreakdown[monthKey].revenue += amount;
     });
 
+    allExpenses.forEach((exp) => {
+      const amount = exp.amount || 0;
+      totalExpense += amount;
+
+      // Expense category breakdown
+      const cat = exp.category || "Khác";
+      if (!expenseCategoryBreakdown[cat]) {
+        expenseCategoryBreakdown[cat] = {
+          category: cat,
+          revenue: 0
+        };
+      }
+      expenseCategoryBreakdown[cat].revenue += amount;
+
+      // Monthly breakdown
+      const expDate = exp.date ? new Date(exp.date) : new Date();
+      const monthKey = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = `Tháng ${expDate.getMonth() + 1}/${expDate.getFullYear()}`;
+
+      if (!monthlyBreakdown[monthKey]) {
+        monthlyBreakdown[monthKey] = {
+          label: monthLabel,
+          revenue: 0,
+          expense: 0,
+          profit: 0
+        };
+      }
+      monthlyBreakdown[monthKey].expense += amount;
+    });
+
+    // Compute monthly profits
+    Object.keys(monthlyBreakdown).forEach((monthKey) => {
+      monthlyBreakdown[monthKey].profit =
+        monthlyBreakdown[monthKey].revenue - monthlyBreakdown[monthKey].expense;
+    });
+
     // Convert breakdowns to sorted arrays
     const courses = Object.values(courseBreakdown).sort((a, b) => b.revenue - a.revenue);
+    const expenseCategories = Object.values(expenseCategoryBreakdown).sort((a, b) => b.revenue - a.revenue);
     const months = Object.entries(monthlyBreakdown)
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([key, value]) => ({
@@ -88,11 +184,17 @@ export async function GET() {
         amountPaid: s.amountPaid,
         discountCode: s.discountCode,
         paymentDate: s.paymentDate,
+        paymentMethod: s.paymentMethod,
+        paymentProof: s.paymentProof,
       })),
+      expenses: allExpenses,
       stats: {
         totalRevenue,
+        totalExpense,
+        netProfit: totalRevenue - totalExpense,
         totalInvoices: paidStudents.length,
         courses,
+        expenseCategories,
         months,
       },
     });

@@ -138,6 +138,21 @@ export async function POST(req: Request) {
         }
       });
 
+      // Automatically sync to Expense table if it's an IMPORT transaction with cost
+      if (type === "IMPORT" && total !== null && total > 0) {
+        await tx.expense.create({
+          data: {
+            title: `Nhập họa cụ: ${item.name} (x${qtyVal} ${item.unit})`,
+            amount: total,
+            category: "Họa cụ",
+            date: transaction.date,
+            description: purpose || `Tự động tạo từ giao dịch kho cho vật phẩm: ${item.name}`,
+            invoices: savedInvoices,
+            supplyTransactionId: transaction.id
+          }
+        });
+      }
+
       return transaction;
     });
 

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { saveBase64File } from "@/lib/image-upload";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -24,6 +25,13 @@ export async function GET(req: Request) {
       let studentClasses = [];
       if (role === "ADMIN") {
         studentClasses = await prisma.studentClass.findMany({
+          include: {
+            class: {
+              include: {
+                course: true
+              }
+            }
+          },
           orderBy: { createdAt: "desc" },
         });
       } else if (role === "TEACHER" || role === "ASSISTANT") {
@@ -46,18 +54,60 @@ export async function GET(req: Request) {
           where: {
             classId: { in: classIds }
           },
+          include: {
+            class: {
+              include: {
+                course: true
+              }
+            }
+          },
           orderBy: { createdAt: "desc" },
         });
       } else {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      // Filter uniquely by studentCode in memory
+      // Filter uniquely by studentCode in memory and group enrollments
       const uniqueStudentsMap = new Map();
       for (const s of studentClasses) {
         const key = s.studentCode?.trim() || `NO-CODE-${s.id}`;
         if (!uniqueStudentsMap.has(key)) {
-          uniqueStudentsMap.set(key, s);
+          uniqueStudentsMap.set(key, {
+            id: s.id,
+            studentCode: s.studentCode,
+            studentName: s.studentName,
+            studentAge: s.studentAge,
+            parentName: s.parentName,
+            parentPhone: s.parentPhone,
+            createdAt: s.createdAt,
+            classId: s.classId,
+            class: s.class,
+            customDuration: s.customDuration,
+            enrollments: [
+              {
+                id: s.id,
+                classId: s.classId,
+                class: s.class,
+                isPaid: s.isPaid,
+                amountPaid: s.amountPaid,
+                discountCode: s.discountCode,
+                paymentDate: s.paymentDate,
+                customDuration: s.customDuration,
+              }
+            ]
+          });
+        } else {
+          const existing = uniqueStudentsMap.get(key);
+          existing.enrollments.push({
+            id: s.id,
+            classId: s.classId,
+            class: s.class,
+            isPaid: s.isPaid,
+            amountPaid: s.amountPaid,
+            discountCode: s.discountCode,
+            paymentDate: s.paymentDate,
+            customDuration: s.customDuration,
+          });
         }
       }
       const uniqueStudents = Array.from(uniqueStudentsMap.values());
@@ -121,7 +171,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { studentName, studentAge, parentName, parentPhone, classId, studentCode } = body;
+    const { studentName, studentAge, parentName, parentPhone, classId, studentCode, customDuration } = body;
 
     if (!studentName || !studentAge || !parentName || !parentPhone || !classId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -201,6 +251,7 @@ export async function POST(req: Request) {
         parentPhone,
         classId,
         studentCode: finalStudentCode,
+        customDuration: customDuration !== undefined && customDuration !== null && customDuration !== "" ? parseInt(customDuration, 10) : null,
       },
     });
 
@@ -276,10 +327,8 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const userId = (session.user as any).id;
   const role = (session.user as any).role;
-  if (role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   try {
     const { searchParams } = new URL(req.url);
@@ -289,22 +338,119 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
     }
 
+    const currentStudent = await prisma.studentClass.findUnique({
+      where: { id },
+      include: {
+        class: {
+          select: {
+            teachers: {
+              select: { id: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!currentStudent) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+
+    // Check permissions
+    if (role === "TEACHER" || role === "ASSISTANT") {
+      const teacherProfile = await prisma.teacher.findUnique({
+        where: { userId },
+      });
+      const isTeacherAssigned = currentStudent.class.teachers.some(t => t.id === teacherProfile?.id);
+      if (!teacherProfile || !isTeacherAssigned) {
+        return NextResponse.json({ error: "Forbidden - You do not teach this class" }, { status: 403 });
+      }
+    } else if (role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await req.json();
-    const { isPaid, amountPaid, discountCode, paymentDate } = body;
+    const { 
+      isPaid, amountPaid, discountCode, paymentDate, paymentMethod, paymentProof,
+      studentName, studentAge, parentName, parentPhone, studentCode, classId, customDuration 
+    } = body;
+
+    // Teachers/Assistants cannot update payment info - only ADMIN can
+    if (role !== "ADMIN" && (isPaid !== undefined || amountPaid !== undefined || discountCode !== undefined || paymentDate !== undefined || paymentMethod !== undefined || paymentProof !== undefined)) {
+      return NextResponse.json({ error: "Forbidden - Only admin can update payment details" }, { status: 403 });
+    }
+
+    const oldCode = currentStudent.studentCode;
+
+    // Build update payload
+    const dataToUpdate: any = {};
+    if (isPaid !== undefined) dataToUpdate.isPaid = Boolean(isPaid);
+    if (amountPaid !== undefined) dataToUpdate.amountPaid = amountPaid !== null ? Number(amountPaid) : null;
+    if (discountCode !== undefined) dataToUpdate.discountCode = discountCode || null;
+    if (paymentDate !== undefined) dataToUpdate.paymentDate = paymentDate ? new Date(paymentDate) : null;
+    if (paymentMethod !== undefined) dataToUpdate.paymentMethod = paymentMethod || null;
+    if (paymentProof !== undefined) {
+      if (paymentProof && paymentProof.startsWith("data:")) {
+        try {
+          const savedPath = await saveBase64File(paymentProof, `payment-proof-${id}-${Date.now()}`);
+          dataToUpdate.paymentProof = savedPath;
+        } catch (uploadError) {
+          console.error("Error saving payment proof image:", uploadError);
+        }
+      } else {
+        dataToUpdate.paymentProof = paymentProof || null;
+      }
+    }
+    
+    if (studentName !== undefined) dataToUpdate.studentName = studentName;
+    if (studentAge !== undefined) dataToUpdate.studentAge = studentAge !== null ? Number(studentAge) : undefined;
+    if (parentName !== undefined) dataToUpdate.parentName = parentName;
+    if (parentPhone !== undefined) dataToUpdate.parentPhone = parentPhone;
+    if (studentCode !== undefined) dataToUpdate.studentCode = studentCode || null;
+    if (classId !== undefined) dataToUpdate.classId = classId;
+    if (customDuration !== undefined) {
+      dataToUpdate.customDuration = customDuration !== null && customDuration !== "" ? Number(customDuration) : null;
+    }
 
     const student = await prisma.studentClass.update({
       where: { id },
-      data: {
-        isPaid: isPaid !== undefined ? Boolean(isPaid) : undefined,
-        amountPaid: amountPaid !== undefined ? (amountPaid !== null ? Number(amountPaid) : null) : undefined,
-        discountCode: discountCode !== undefined ? (discountCode || null) : undefined,
-        paymentDate: paymentDate !== undefined ? (paymentDate ? new Date(paymentDate) : null) : undefined,
-      },
+      data: dataToUpdate,
     });
+
+    // Sync profile info for all classes of the same student if they have a studentCode
+    const codeToSync = studentCode !== undefined ? (studentCode || null) : oldCode;
+    if (codeToSync) {
+      const syncData: any = {};
+      if (studentName !== undefined) syncData.studentName = studentName;
+      if (studentAge !== undefined) syncData.studentAge = studentAge !== null ? Number(studentAge) : undefined;
+      if (parentName !== undefined) syncData.parentName = parentName;
+      if (parentPhone !== undefined) syncData.parentPhone = parentPhone;
+      if (studentCode !== undefined) syncData.studentCode = studentCode || null;
+
+      if (Object.keys(syncData).length > 0) {
+        // Update other classes with the same code
+        await prisma.studentClass.updateMany({
+          where: {
+            OR: [
+              { studentCode: codeToSync },
+              oldCode ? { studentCode: oldCode } : {}
+            ]
+          },
+          data: syncData,
+        });
+
+        // Also update the studentCode in StudentArtwork if it changed
+        if (studentCode !== undefined && oldCode && oldCode !== studentCode) {
+          await prisma.studentArtwork.updateMany({
+            where: { studentCode: oldCode },
+            data: { studentCode: studentCode || "" },
+          });
+        }
+      }
+    }
 
     return NextResponse.json({ student });
   } catch (error) {
-    console.error("Error updating student payment:", error);
+    console.error("Error updating student:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Course" ADD COLUMN     "studyType" TEXT NOT NULL DEFAULT 'BY_COURSE';

@@ -35,14 +35,15 @@ export default function CoursesManagerPage() {
     audience: "",
     duration: "12",
     fee: "",
-    feeUnit: "buổi",
+    feeUnit: "khóa",
     feeNote: "đã bao gồm họa cụ",
     objectives: [""] as string[],
     content: [""] as string[],
     benefits: [""] as string[],
     isActive: true,
     classCategoryId: "",
-    level: ""
+    level: "",
+    studyType: "BY_COURSE"
   });
   
   const [submitting, setSubmitting] = useState(false);
@@ -139,14 +140,15 @@ export default function CoursesManagerPage() {
       audience: "",
       duration: "12",
       fee: "",
-      feeUnit: "buổi",
+      feeUnit: "khóa",
       feeNote: "đã bao gồm họa cụ",
       objectives: [""],
       content: [""],
       benefits: [""],
       isActive: true,
       classCategoryId: categories[0]?.id || "",
-      level: ""
+      level: "",
+      studyType: "BY_COURSE"
     });
     setError("");
     setShowAddEditModal(true);
@@ -160,14 +162,15 @@ export default function CoursesManagerPage() {
       audience: course.audience,
       duration: course.duration ? String(parseInt(course.duration, 10) || 12) : "12",
       fee: String(course.fee),
-      feeUnit: course.feeUnit || "buổi",
+      feeUnit: course.feeUnit || (course.studyType === "BY_MONTH" ? "tháng" : "khóa"),
       feeNote: course.feeNote || "",
       objectives: course.objectives?.length > 0 ? [...course.objectives] : [""],
       content: course.content?.length > 0 ? [...course.content] : [""],
       benefits: course.benefits?.length > 0 ? [...course.benefits] : [""],
       isActive: course.isActive,
       classCategoryId: course.classCategoryId || "",
-      level: course.level || ""
+      level: course.level || "",
+      studyType: course.studyType || "BY_COURSE"
     });
     setError("");
     setShowAddEditModal(true);
@@ -419,11 +422,30 @@ export default function CoursesManagerPage() {
                 </p>
 
                 <p className="text-xs font-semibold text-gray-600">
-                  <strong className="font-extrabold text-black">Thời lượng:</strong> {course.duration ? (String(course.duration).includes("buổi") ? course.duration : `${course.duration} buổi`) : ""}
+                  <strong className="font-extrabold text-black">Hình thức học:</strong>{" "}
+                  {course.studyType === "BY_MONTH" ? (
+                    <span className="bg-sky-100 text-sky-800 border border-sky-300 rounded px-1.5 py-0.5 text-[10px] font-black">
+                      Học theo tháng
+                    </span>
+                  ) : (
+                    <span className="bg-purple-100 text-purple-800 border border-purple-300 rounded px-1.5 py-0.5 text-[10px] font-black">
+                      Học theo khóa
+                    </span>
+                  )}
                 </p>
 
                 <p className="text-xs font-semibold text-gray-600">
-                  <strong className="font-extrabold text-black">Học phí:</strong> {course.fee?.toLocaleString("vi-VN")} đ / {course.feeUnit} {course.feeNote && `(${course.feeNote})`}
+                  <strong className="font-extrabold text-black">
+                    {course.studyType === "BY_MONTH" ? "Số buổi 1 tháng:" : "Số buổi 1 khóa:"}
+                  </strong>{" "}
+                  {course.duration} buổi
+                </p>
+
+                <p className="text-xs font-semibold text-gray-600">
+                  <strong className="font-extrabold text-black">
+                    {course.studyType === "BY_MONTH" ? "Học phí 1 tháng:" : "Học phí 1 khóa:"}
+                  </strong>{" "}
+                  {course.fee?.toLocaleString("vi-VN")} đ / {course.feeUnit} {course.feeNote && `(${course.feeNote})`}
                 </p>
 
                 <div className="border-t border-dashed border-stone-200 pt-2 space-y-1">
@@ -513,6 +535,30 @@ export default function CoursesManagerPage() {
               </div>
 
               <div>
+                <label className="block text-xs font-black text-gray-800 mb-1.5 uppercase">Hình thức học *</label>
+                <div className="flex border-3 border-black rounded-xl overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] bg-white max-w-xs mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, studyType: "BY_COURSE", feeUnit: "khóa" })}
+                    className={`flex-1 text-center py-2 text-xs font-black transition-colors cursor-pointer ${
+                      form.studyType === "BY_COURSE" ? "bg-[#ffd275] text-black border-r-3 border-black" : "bg-white text-gray-700 border-r-3 border-black hover:bg-amber-50"
+                    }`}
+                  >
+                    Học theo khóa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, studyType: "BY_MONTH", feeUnit: "tháng" })}
+                    className={`flex-1 text-center py-2 text-xs font-black transition-colors cursor-pointer ${
+                      form.studyType === "BY_MONTH" ? "bg-[#bae1ff] text-black" : "bg-white text-gray-700 hover:bg-sky-50"
+                    }`}
+                  >
+                    Học theo tháng
+                  </button>
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-xs font-black text-gray-800 mb-1">Cấp độ / Level (Ví dụ: Level 1, Level 2...)</label>
                 <input
                   type="text"
@@ -537,16 +583,25 @@ export default function CoursesManagerPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-black text-gray-800 mb-1">Học phí (VNĐ) *</label>
+                  <label className="block text-xs font-black text-gray-800 mb-1">
+                    {form.studyType === "BY_MONTH" ? "Học phí 1 tháng (VNĐ) *" : "Học phí 1 khóa (VNĐ) *"}
+                  </label>
                   <input
-                    type="number"
+                    type="text"
                     required
-                    min="0"
-                    placeholder="Ví dụ: 160000"
+                    placeholder="Ví dụ: 160.000"
                     className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
-                    value={form.fee}
-                    onChange={e => setForm({ ...form, fee: e.target.value })}
+                    value={form.fee ? Number(form.fee).toLocaleString("vi-VN") : ""}
+                    onChange={e => {
+                      const rawValue = e.target.value.replace(/\./g, "").replace(/[^0-9]/g, "");
+                      setForm({ ...form, fee: rawValue });
+                    }}
                   />
+                  {form.fee && Number(form.fee) > 0 && (
+                    <p className="text-[10px] text-amber-700 font-extrabold mt-1 italic bg-amber-50 border border-amber-200 rounded-lg p-1.5 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                      ✍️ Bằng chữ: {spellNumberVietnamese(Number(form.fee))}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -554,15 +609,17 @@ export default function CoursesManagerPage() {
                   <input
                     type="text"
                     required
-                    placeholder="Ví dụ: buổi, khóa"
-                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                    disabled
+                    placeholder="Ví dụ: khóa, tháng"
+                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-200 disabled:cursor-not-allowed font-bold text-gray-500 focus:outline-none text-xs"
                     value={form.feeUnit}
-                    onChange={e => setForm({ ...form, feeUnit: e.target.value })}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-800 mb-1">Thời lượng (Số buổi) *</label>
+                  <label className="block text-xs font-black text-gray-800 mb-1">
+                    {form.studyType === "BY_MONTH" ? "Số buổi 1 tháng *" : "Số buổi 1 khóa *"}
+                  </label>
                   <input
                     type="number"
                     required
@@ -809,4 +866,70 @@ export default function CoursesManagerPage() {
       />
     </div>
   );
+}
+
+function spellNumberVietnamese(num: number): string {
+  if (num === 0) return "Không đồng";
+  
+  const units = ["", "nghìn", "triệu", "tỷ", "nghìn tỷ", "triệu tỷ"];
+  const digits = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+  
+  let words: string[] = [];
+  let chunkCount = 0;
+  let temp = num;
+  
+  while (temp > 0) {
+    const chunk = temp % 1000;
+    if (chunk > 0) {
+      const chunkWords = readThreeDigits(chunk, temp >= 1000);
+      const unit = units[chunkCount];
+      if (unit) {
+        chunkWords.push(unit);
+      }
+      words = [...chunkWords, ...words];
+    }
+    temp = Math.floor(temp / 1000);
+    chunkCount++;
+  }
+  
+  function readThreeDigits(n: number, hasHigher: boolean): string[] {
+    const hundred = Math.floor(n / 100);
+    const ten = Math.floor((n % 100) / 10);
+    const one = n % 10;
+    
+    const chunkWords: string[] = [];
+    
+    if (hundred > 0 || hasHigher) {
+      chunkWords.push(digits[hundred], "trăm");
+    }
+    
+    if (ten > 0) {
+      if (ten === 1) {
+        chunkWords.push("mười");
+      } else {
+        chunkWords.push(digits[ten], "mươi");
+      }
+    } else if (one > 0 && (hundred > 0 || hasHigher)) {
+      chunkWords.push("lẻ");
+    }
+    
+    if (one > 0) {
+      if (one === 1 && ten > 1) {
+        chunkWords.push("mốt");
+      } else if (one === 5 && ten > 0) {
+        chunkWords.push("lăm");
+      } else if (one === 4 && ten > 1) {
+        chunkWords.push("tư");
+      } else {
+        chunkWords.push(digits[one]);
+      }
+    }
+    
+    return chunkWords;
+  }
+  
+  const result = words.join(" ").trim();
+  if (!result) return "";
+  
+  return result.charAt(0).toUpperCase() + result.slice(1) + " đồng";
 }

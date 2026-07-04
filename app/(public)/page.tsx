@@ -52,9 +52,9 @@ export default async function Home() {
   }
 
   let benefits = [
-    { title: "Giáo Trình Sáng Tạo Tự Do", description: "Các bài học được nghiên cứu chuyên sâu, lồng ghép kể chuyện, trò chơi kích thích óc sáng tạo thay vì rập khuôn sao chép mẫu vẽ.", color: "bg-sky-200" },
-    { title: "Giáo Viên Chuẩn Mỹ Thuật", description: "Đội ngũ thầy cô tốt nghiệp các trường Đại học Mỹ thuật uy tín, có kỹ năng sư phạm mầm non và tràn đầy kiên nhẫn, tình yêu trẻ nhỏ.", color: "bg-amber-200" },
-    { title: "Theo Dõi Kết Quả Trực Quan", description: "Cổng thông tin phụ huynh tích hợp xem chi tiết số buổi học, chuyên cần và triển lãm các tác phẩm tranh vẽ kèm nhận xét từ giáo viên qua Mã học viên.", color: "bg-purple-200" }
+    { title: "Giáo Trình Sáng Tạo Độc Quyền", description: "Mỗi bài học được thiết kế phù hợp với từng độ tuổi, kết hợp kể chuyện, trò chơi và các hoạt động trải nghiệm nhằm khơi gợi tư duy sáng tạo, giúp bé học vẽ bằng cảm hứng thay vì sao chép theo mẫu.", color: "bg-sky-200" },
+    { title: "Đội Ngũ Giáo Viên Chuyên Môn Cao", description: "Giáo viên tốt nghiệp từ các trường Đại học Mỹ thuật uy tín, giàu kinh nghiệm giảng dạy trẻ em, luôn tận tâm, kiên nhẫn và đồng hành cùng mỗi bé trên hành trình phát triển khả năng nghệ thuật.", color: "bg-amber-200" },
+    { title: "Đồng Hành Cùng Ba Mẹ Trên Mỗi Bước Tiến", description: "Phụ huynh dễ dàng theo dõi quá trình học của con thông qua cổng thông tin trực tuyến với đầy đủ lịch sử học tập, tình hình chuyên cần, bộ sưu tập tác phẩm và nhận xét chi tiết từ giáo viên theo từng giai đoạn.", color: "bg-purple-200" }
   ];
   if (settings.benefits) {
     try { benefits = JSON.parse(settings.benefits); } catch (_) {}
@@ -188,8 +188,7 @@ export default async function Home() {
             <span className="text-sky-500">Vẽ zì đó?</span>
           </h2>
           <p className="text-gray-500 font-bold text-sm">
-            Chúng tôi không dạy bé rập khuôn theo mẫu, mà tạo không gian khuyến khích trí tưởng tượng, rèn luyện kỹ năng quan sát và đôi tay khéo léo.
-          </p>
+Tại Vẽ Zì Đó, mỗi bức tranh đều mang dấu ấn riêng của từng bé. Chúng tôi tạo môi trường để trẻ tự do khám phá, phát huy trí tưởng tượng, rèn luyện khả năng quan sát và sự khéo léo qua từng nét vẽ.          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4">
@@ -230,7 +229,7 @@ export default async function Home() {
                 Đội ngũ sáng lập & Giảng viên
               </h2>
               <p className="text-gray-500 font-bold text-sm">
-                Những nhà sư phạm mỹ thuật giàu chuyên môn, tâm huyết và thấu hiểu tâm lý trẻ thơ.
+                Giàu chuyên môn, tận tâm và thấu hiểu tâm lý trẻ.
               </p>
             </div>
 

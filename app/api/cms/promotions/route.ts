@@ -43,6 +43,7 @@ export async function POST(req: Request) {
       endDate,
       isActive,
       maxUses,
+      isStackable,
     } = body;
 
     if (!code || !discountType || discountValue === undefined) {
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
         endDate: endDate ? new Date(endDate) : null,
         isActive: isActive !== undefined ? Boolean(isActive) : true,
         maxUses: maxUses !== undefined && maxUses !== null && maxUses !== "" ? parseInt(maxUses, 10) : null,
+        isStackable: isStackable !== undefined ? Boolean(isStackable) : false,
       },
     });
 
@@ -111,6 +113,7 @@ export async function PUT(req: Request) {
       endDate,
       isActive,
       maxUses,
+      isStackable,
     } = body;
 
     if (!code || !discountType || discountValue === undefined) {
@@ -147,6 +150,7 @@ export async function PUT(req: Request) {
         endDate: endDate ? new Date(endDate) : null,
         isActive: isActive !== undefined ? Boolean(isActive) : true,
         maxUses: maxUses !== undefined && maxUses !== null && maxUses !== "" ? parseInt(maxUses, 10) : null,
+        isStackable: isStackable !== undefined ? Boolean(isStackable) : false,
       },
     });
 

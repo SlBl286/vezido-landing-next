@@ -105,6 +105,7 @@ export interface StudentEnrollInput {
   parentPhone: string;
   classId: string;
   studentCode?: string;
+  customDuration?: number | null;
 }
 
 export interface ProfileUpdateInput {

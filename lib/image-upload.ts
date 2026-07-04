@@ -39,7 +39,7 @@ export async function saveBase64Image(base64Data: string, prefix: string): Promi
   
   await fs.promises.writeFile(filePath, buffer);
 
-  return `/uploads/${filename}`;
+  return `uploads/${filename}`;
 }
 
 export async function saveBase64File(base64Data: string, prefix: string): Promise<string> {
@@ -84,6 +84,6 @@ export async function saveBase64File(base64Data: string, prefix: string): Promis
   
   await fs.promises.writeFile(filePath, buffer);
 
-  return `/uploads/${filename}`;
+  return `uploads/${filename}`;
 }
 

@@ -91,3 +91,50 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function PUT(req: Request) {
+  const session = await auth();
+  if (!session || !session.user || (session.user as any).role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "ID chuyên môn là bắt buộc" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const { name } = body;
+
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: "Tên chuyên môn là bắt buộc" }, { status: 400 });
+    }
+
+    const trimmedName = name.trim();
+
+    // Check if duplicate exists with different ID
+    const existing = await prisma.specialty.findFirst({
+      where: {
+        name: trimmedName,
+        id: { not: id }
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json({ error: "Chuyên môn này đã tồn tại" }, { status: 400 });
+    }
+
+    const specialty = await prisma.specialty.update({
+      where: { id },
+      data: { name: trimmedName },
+    });
+
+    return NextResponse.json({ specialty });
+  } catch (error) {
+    console.error("Error updating specialty:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}

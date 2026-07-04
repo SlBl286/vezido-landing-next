@@ -6,6 +6,7 @@ import {
   Search, Calendar, User, CheckCircle2, AlertCircle, RefreshCw, X, Layers, Eye, BookOpen, Heart, Landmark, Award, Palette
 } from "lucide-react";
 import { createPortal } from "react-dom";
+import { getImageUrl } from "@/lib/utils";
 
 interface StudentClassInfo {
   id: string;
@@ -314,13 +315,13 @@ function PortfolioContent() {
                           {/* Artwork Frame */}
                           <div className="border-2 border-black rounded overflow-hidden relative aspect-video bg-gray-100 flex items-center justify-center cursor-pointer">
                             <img 
-                              src={art.imageUrl} 
+                              src={getImageUrl(art.imageUrl)} 
                               alt={art.title || "Drawing"}
                               className="w-full h-full object-cover"
                             />
                             {/* Click to zoom indicator overlay */}
                             <div 
-                              onClick={() => setActiveZoomUrl(art.imageUrl)}
+                              onClick={() => setActiveZoomUrl(getImageUrl(art.imageUrl))}
                               className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center animate-fade-in duration-200"
                             >
                               <div className="bg-white border-2 border-black rounded-full p-2 text-black shadow-md">
@@ -373,7 +374,7 @@ function PortfolioContent() {
         >
           <div className="relative max-w-5xl max-h-[85vh] w-full h-full flex items-center justify-center">
             <img 
-              src={activeZoomUrl} 
+              src={getImageUrl(activeZoomUrl)} 
               alt="Zoomed Drawing" 
               className="max-w-full max-h-full object-contain border-4 border-white rounded shadow-2xl animate-in zoom-in-95 duration-200"
             />

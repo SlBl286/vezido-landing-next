@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { cmsApi } from "@/lib/api-client";
 import { AuthSession } from "@/lib/types/api";
-import { Plus, Trash2, BookOpen, Users, X, Loader2, Award } from "lucide-react";
+import { Plus, Trash2, BookOpen, Users, X, Loader2, Award, Edit } from "lucide-react";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
 
 interface SpecialtyWithCounts {
@@ -25,6 +25,7 @@ export default function SpecialtiesPage() {
 
   // Modals & form state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedSpecialty, setSelectedSpecialty] = useState<SpecialtyWithCounts | null>(null);
   const [formError, setFormError] = useState("");
   const [specialtyName, setSpecialtyName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -95,8 +96,8 @@ export default function SpecialtiesPage() {
     }
   }, [loadingSession, session]);
 
-  // Handle Add Specialty
-  const handleAddSpecialty = async (e: React.FormEvent) => {
+  // Handle Add/Edit Specialty
+  const handleSaveSpecialty = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
     setSubmitting(true);
@@ -108,12 +109,19 @@ export default function SpecialtiesPage() {
     }
 
     try {
-      await cmsApi.specialties.create({ name: specialtyName });
+      if (selectedSpecialty) {
+        await cmsApi.specialties.update(selectedSpecialty.id, { name: specialtyName });
+        showNotification("Thành công 🎉", "Cập nhật chuyên môn thành công", "success");
+      } else {
+        await cmsApi.specialties.create({ name: specialtyName });
+        showNotification("Thành công 🎉", "Tạo chuyên môn mới thành công", "success");
+      }
       setShowAddModal(false);
       setSpecialtyName("");
+      setSelectedSpecialty(null);
       fetchSpecialties();
     } catch (err: any) {
-      setFormError(err.message || "Có lỗi xảy ra khi tạo chuyên môn");
+      setFormError(err.message || "Có lỗi xảy ra khi lưu chuyên môn");
     } finally {
       setSubmitting(false);
     }
@@ -173,6 +181,8 @@ export default function SpecialtiesPage() {
         </div>
         <button
           onClick={() => {
+            setSelectedSpecialty(null);
+            setSpecialtyName("");
             setFormError("");
             setShowAddModal(true);
           }}
@@ -227,7 +237,19 @@ export default function SpecialtiesPage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex justify-end">
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedSpecialty(spec);
+                    setSpecialtyName(spec.name);
+                    setFormError("");
+                    setShowAddModal(true);
+                  }}
+                  className="p-2 bg-[#ffd275] hover:bg-[#ffc342] border-2 border-black rounded-xl transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 text-black cursor-pointer inline-flex items-center justify-center"
+                  title="Sửa chuyên môn"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => handleDeleteSpecialty(spec.id, spec.name, spec._count.teachers, spec._count.classes)}
                   className="p-2 bg-[#ffaaa6] hover:bg-[#ff8b94] border-2 border-black rounded-xl transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 text-black cursor-pointer inline-flex items-center justify-center"
@@ -253,9 +275,11 @@ export default function SpecialtiesPage() {
             </button>
 
             <h3 className="text-xl font-black text-black mb-1 flex items-center gap-2">
-              🎨 Thêm Chuyên môn mới
+              🎨 {selectedSpecialty ? "Sửa Chuyên môn" : "Thêm Chuyên môn mới"}
             </h3>
-            <p className="text-gray-500 text-sm mb-6">Tạo một môn vẽ mới vào danh mục hệ thống</p>
+            <p className="text-gray-500 text-sm mb-6">
+              {selectedSpecialty ? "Chỉnh sửa tên chuyên môn vẽ trong hệ thống" : "Tạo một môn vẽ mới vào danh mục hệ thống"}
+            </p>
             
             {formError && (
               <div className="bg-rose-50 border-2 border-rose-400 text-rose-700 rounded-xl p-3 mb-4 font-bold text-sm">
@@ -263,7 +287,7 @@ export default function SpecialtiesPage() {
               </div>
             )}
 
-            <form onSubmit={handleAddSpecialty} className="space-y-4">
+            <form onSubmit={handleSaveSpecialty} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-800 mb-1">Tên chuyên môn *</label>
                 <input

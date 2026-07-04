@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
+import { getImageUrl } from "@/lib/utils";
 
 interface Artwork {
   id: string;
@@ -483,14 +484,14 @@ export default function CMSArtworksPage() {
                     {/* Drawing Image container */}
                     <div className="border-2 border-black rounded-md overflow-hidden relative group/img aspect-video bg-gray-50 flex items-center justify-center">
                       <img 
-                        src={art.imageUrl} 
+                        src={getImageUrl(art.imageUrl)} 
                         alt={art.title || "Drawing"}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover rounded-xl border border-black/10"
                       />
                       {/* Zoom action layer */}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
                         <button
-                          onClick={() => setActiveZoomUrl(art.imageUrl)}
+                          onClick={() => setActiveZoomUrl(getImageUrl(art.imageUrl))}
                           className="p-2 bg-white border border-black rounded-full hover:bg-gray-100 transition-all text-black shadow-md cursor-pointer"
                           title="Phóng to ảnh"
                         >
@@ -631,7 +632,7 @@ export default function CMSArtworksPage() {
         >
           <div className="relative max-w-5xl max-h-[85vh] w-full h-full flex items-center justify-center">
             <img 
-              src={activeZoomUrl} 
+              src={getImageUrl(activeZoomUrl)} 
               alt="Zoomed Drawing" 
               className="max-w-full max-h-full object-contain border-4 border-white rounded shadow-2xl animate-in zoom-in-95 duration-200"
             />

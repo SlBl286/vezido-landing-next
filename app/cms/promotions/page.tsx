@@ -28,6 +28,7 @@ export default function PromotionsManagerPage() {
     endDate: "",
     isActive: true,
     maxUses: "",
+    isStackable: false,
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -97,6 +98,7 @@ export default function PromotionsManagerPage() {
       endDate: "",
       isActive: true,
       maxUses: "",
+      isStackable: false,
     });
     setError("");
     setShowAddEditModal(true);
@@ -115,6 +117,7 @@ export default function PromotionsManagerPage() {
       endDate: promo.endDate ? promo.endDate.split("T")[0] : "",
       isActive: promo.isActive,
       maxUses: promo.maxUses ? String(promo.maxUses) : "",
+      isStackable: promo.isStackable || false,
     });
     setError("");
     setShowAddEditModal(true);
@@ -171,6 +174,7 @@ export default function PromotionsManagerPage() {
       endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
       isActive: form.isActive,
       maxUses: form.maxUses ? parseInt(form.maxUses, 10) : null,
+      isStackable: form.isStackable,
     };
 
     try {
@@ -275,12 +279,19 @@ export default function PromotionsManagerPage() {
                       <td className="py-4 px-4 font-semibold text-gray-700 text-sm">
                         {promo.description || <span className="text-gray-400 font-medium italic">Không có</span>}
                       </td>
-                      <td className="py-4 px-4 text-xs font-bold">
-                        <span className={`whitespace-nowrap border-2 border-black px-2 py-0.5 rounded font-black uppercase tracking-wider ${
-                          promo.discountType === "PERCENTAGE" ? "bg-[#bae1ff]" : "bg-[#a8e6cf]"
-                        }`}>
-                          {promo.discountType === "PERCENTAGE" ? "% Phần trăm" : "đ Cố định"}
-                        </span>
+                      <td className="py-4 px-4">
+                        <div className="flex flex-col gap-1">
+                          <span className={`w-fit whitespace-nowrap border-2 border-black px-2 py-0.5 rounded font-black text-[9px] uppercase shadow-[1px_1px_0px_rgba(0,0,0,1)] ${
+                            promo.discountType === "PERCENTAGE" ? "bg-[#bae1ff]" : "bg-[#a8e6cf]"
+                          }`}>
+                            {promo.discountType === "PERCENTAGE" ? "% Phần trăm" : "đ Cố định"}
+                          </span>
+                          <span className={`w-fit whitespace-nowrap border border-black px-1.5 py-0.5 rounded font-bold text-[8px] uppercase ${
+                            promo.isStackable ? "bg-[#bae1ff] text-black" : "bg-[#ffd275] text-black"
+                          }`}>
+                            {promo.isStackable ? "⚡ Cộng dồn" : "🔒 Độc quyền"}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-4 px-4 font-black text-black text-sm">
                         {promo.discountType === "PERCENTAGE" 
@@ -496,11 +507,16 @@ export default function PromotionsManagerPage() {
                 </div>
               </div>
 
-              <div className="border-t border-black/15 pt-4">
+              <div className="border-t border-black/15 pt-4 flex flex-col gap-3">
                 <CustomCheckbox
                   checked={form.isActive}
                   onChange={checked => setForm({ ...form, isActive: checked })}
                   label="Mã giảm giá đang kích hoạt"
+                />
+                <CustomCheckbox
+                  checked={form.isStackable}
+                  onChange={checked => setForm({ ...form, isStackable: checked })}
+                  label="Cho phép cộng dồn với mã giảm giá khác (Stackable)"
                 />
               </div>
 

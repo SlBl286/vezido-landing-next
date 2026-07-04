@@ -167,7 +167,13 @@ export const cmsApi = {
       method: "DELETE",
     }),
 
-    updatePayment: (id: string, data: { isPaid: boolean; amountPaid?: number | null; discountCode?: string | null; paymentDate?: string | null }) => fetchJson<{ student: any }>(`/api/cms/students?id=${id}`, {
+    update: (id: string, data: { studentName?: string; studentAge?: number; parentName?: string; parentPhone?: string; studentCode?: string | null; classId?: string; customDuration?: number | null }) => fetchJson<{ student: any }>(`/api/cms/students?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+    updatePayment: (id: string, data: { isPaid: boolean; amountPaid?: number | null; discountCode?: string | null; paymentDate?: string | null; paymentMethod?: string | null; paymentProof?: string | null }) => fetchJson<{ student: any }>(`/api/cms/students?id=${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -178,6 +184,11 @@ export const cmsApi = {
     list: () => fetchJson<{ specialties: any[] }>("/api/cms/specialties"),
     create: (data: { name: string }) => fetchJson<{ specialty: any }>("/api/cms/specialties", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: { name: string }) => fetchJson<{ specialty: any }>(`/api/cms/specialties?id=${id}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
@@ -336,7 +347,22 @@ export const cmsApi = {
     verify: (code: string, amount: number) => fetchJson<{ valid: boolean; discountAmount: number; message?: string }>(`/api/cms/promotions/verify?code=${code}&amount=${amount}`),
   },
   invoices: {
-    list: () => fetchJson<{ invoices: any[]; stats: { totalRevenue: number; totalInvoices: number; courses: any[]; months: any[] } }>("/api/cms/invoices"),
+    list: () => fetchJson<{ invoices: any[]; expenses: any[]; stats: { totalRevenue: number; totalExpense: number; netProfit: number; totalInvoices: number; courses: any[]; expenseCategories: any[]; months: any[] } }>("/api/cms/invoices"),
+  },
+  expenses: {
+    create: (data: any) => fetchJson<{ expense: any }>("/api/cms/expenses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    update: (id: string, data: any) => fetchJson<{ expense: any }>(`/api/cms/expenses?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/expenses?id=${id}`, {
+      method: "DELETE",
+    }),
   },
   settings: {
     get: () => fetchJson<{ settings: Record<string, string> }>("/api/cms/settings"),
