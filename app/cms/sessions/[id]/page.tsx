@@ -11,6 +11,7 @@ import {
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
 import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
+import { getImageUrl } from "@/lib/utils";
 
 const PLACEHOLDER_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' font-size='14' font-family='sans-serif' font-weight='bold' fill='%239ca3af' dominant-baseline='middle' text-anchor='middle'>Chưa tải ảnh bài vẽ</text></svg>";
 
@@ -629,7 +630,7 @@ export default function SessionDetailPage({ params }: PageProps) {
                         <div className="border-3 border-black bg-white p-3 pb-6 shadow-[4px_4px_0px_rgba(0,0,0,1)] rotate-1 mx-auto max-w-[260px] flex flex-col items-center">
                           <div className="relative aspect-square w-full border-2 border-black overflow-hidden bg-gray-100">
                             <img 
-                              src={currentArtwork.imageUrl} 
+                              src={getImageUrl(currentArtwork.imageUrl)} 
                               alt={`Tranh vẽ của ${student.studentName}`}
                               className="object-cover w-full h-full"
                             />
