@@ -2,6 +2,12 @@
 FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 
+# Set dummy env vars for build time to prevent prisma/next build from failing on missing variables
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost/dummy"
+ENV BETTER_AUTH_SECRET="dummy_secret_for_build_only"
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
 # Install dependencies
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
@@ -13,8 +19,6 @@ RUN bun prisma generate
 
 # Copy source code and build Next.js application
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
 RUN bun run build
 
 # Stage 2: Runner stage
