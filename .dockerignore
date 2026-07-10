@@ -9,8 +9,6 @@ node_modules
 *.tsbuildinfo
 *.md
 Dockerfile
-docker-compose.yml
-bun.lock
 yarn.lock
 package-lock.json
 pnpm-lock.yaml
