@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vezido_landing_app
+    restart: unless-stopped
+    networks:
+      - proxy
+    environment:
+      # Database Connection
+      - DATABASE_URL
+
+      # Auth Configurations
+      - BETTER_AUTH_SECRET
+
+      # SMTP Email Configurations
+      - SMTP_HOST
+      - SMTP_PORT
+      - SMTP_USER
+      - SMTP_PASS
+      - NOTIFY_EMAIL
+
+      # Zalo API Notifications
+      - ZALO_CREDENTIALS_COOKIE
+      - ZALO_CREDENTIALS_IMEI
+      - ZALO_CREDENTIALS_USER_AGENT
+      - ZALO_NOTIFY_THREAD_ID
+      - ZALO_THREAD_TYPE
+
+      # Payment Configuration
+      - PAY_API_KEY
+    volumes:
+      - /data/vezido/uploads:/app/public/uploads
+
+networks:
+  proxy:
+    external: true
+ 
