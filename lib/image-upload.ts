@@ -15,7 +15,7 @@ export async function saveBase64Image(base64Data: string, prefix: string): Promi
 
   const mimeType = matches[1];
   const base64Content = matches[2];
-  
+
   // Map mime type to extension
   let extension = "png";
   if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
@@ -36,10 +36,10 @@ export async function saveBase64Image(base64Data: string, prefix: string): Promi
 
   const filePath = path.join(uploadDir, filename);
   const buffer = Buffer.from(base64Content, "base64");
-  
+
   await fs.promises.writeFile(filePath, buffer);
 
-  return `uploads/${filename}`;
+  return `/uploads/${filename}`;
 }
 
 export async function saveBase64File(base64Data: string, prefix: string): Promise<string> {
@@ -56,7 +56,7 @@ export async function saveBase64File(base64Data: string, prefix: string): Promis
 
   const mimeType = matches[1];
   const base64Content = matches[2];
-  
+
   // Map mime type to extension
   let extension = "bin";
   if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
@@ -81,9 +81,9 @@ export async function saveBase64File(base64Data: string, prefix: string): Promis
 
   const filePath = path.join(uploadDir, filename);
   const buffer = Buffer.from(base64Content, "base64");
-  
+
   await fs.promises.writeFile(filePath, buffer);
 
-  return `uploads/${filename}`;
+  return `/uploads/${filename}`;
 }
 
