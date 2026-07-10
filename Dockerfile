@@ -8,6 +8,7 @@ RUN bun install --frozen-lockfile
 
 # Copy Prisma schema and generate Prisma Client
 COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
 RUN bun prisma generate
 
 # Copy source code and build Next.js application
@@ -30,7 +31,9 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/lib/generated/prisma ./lib/generated/prisma
+
 
 EXPOSE 2202
 
