@@ -16,7 +16,7 @@ import Image from "next/image";
 const MENU_ITEMS = [
   { label: "🏠 Trang chủ", href: "/" },
   { label: "📅 Lịch học", href: "/schedule" },
-  { label: "💰 Bảng giá", href: "/pricing" },
+  { label: "📖 Khóa học", href: "/pricing" },
   { label: "🎨 Kết quả học tập", href: "/portfolio" },
   { label: "📞 Liên hệ", href: "/contact" },
 ];

@@ -50,10 +50,28 @@ export default function CoursesManagerPage() {
   const [error, setError] = useState("");
 
   const filteredCourses = useMemo(() => {
+    const cleanSearch = removeVietnameseTones(searchTerm);
+
     return courses.filter(course => {
-      const matchesSearch = 
-        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (course.audience && course.audience.toLowerCase().includes(searchTerm.toLowerCase()));
+      if (!cleanSearch) return true;
+
+      const titleClean = removeVietnameseTones(course.title || "");
+      const audienceClean = removeVietnameseTones(course.audience || "");
+      const levelClean = removeVietnameseTones(course.level || "");
+      const feeNoteClean = removeVietnameseTones(course.feeNote || "");
+      
+      const objectivesClean = (course.objectives || []).map((o: string) => removeVietnameseTones(o)).join(" ");
+      const contentClean = (course.content || []).map((c: string) => removeVietnameseTones(c)).join(" ");
+      const benefitsClean = (course.benefits || []).map((b: string) => removeVietnameseTones(b)).join(" ");
+
+      const matchesSearch =
+        titleClean.includes(cleanSearch) ||
+        audienceClean.includes(cleanSearch) ||
+        levelClean.includes(cleanSearch) ||
+        feeNoteClean.includes(cleanSearch) ||
+        objectivesClean.includes(cleanSearch) ||
+        contentClean.includes(cleanSearch) ||
+        benefitsClean.includes(cleanSearch);
       
       const matchesCategory = 
         filterCategoryId === "ALL" || 
@@ -701,13 +719,13 @@ export default function CoursesManagerPage() {
                 {/* 2. Content/Curriculum list */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-black text-gray-800">📋 Lộ trình các buổi học (Ví dụ: Buổi 1-3:...)</label>
+                    <label className="text-xs font-black text-gray-800">📋 Nội dung khóa học (Nêu các gạch đầu dòng)</label>
                     <button
                       type="button"
                       onClick={() => handleAddArrayItem("content")}
                       className="text-xs font-black text-sky-600 hover:text-sky-700 flex items-center gap-0.5 cursor-pointer"
                     >
-                      <PlusCircle className="w-3.5 h-3.5" /> Thêm buổi học
+                      <PlusCircle className="w-3.5 h-3.5" /> Thêm gạch đầu dòng
                     </button>
                   </div>
                   <div className="space-y-1.5">
@@ -715,7 +733,7 @@ export default function CoursesManagerPage() {
                       <div key={idx} className="flex gap-2 items-center">
                         <input
                           type="text"
-                          placeholder="Mô tả lộ trình buổi học..."
+                          placeholder="Nội dung bài học hoặc chủ đề..."
                           className="flex-1 border-2 border-black rounded-lg p-2 bg-gray-50 font-medium text-black focus:outline-none text-xs"
                           value={cont}
                           onChange={e => handleUpdateArrayItem("content", idx, e.target.value)}
@@ -948,4 +966,13 @@ function spellNumberVietnamese(num: number): string {
   if (!result) return "";
   
   return result.charAt(0).toUpperCase() + result.slice(1) + " đồng";
+}
+
+function removeVietnameseTones(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
 }

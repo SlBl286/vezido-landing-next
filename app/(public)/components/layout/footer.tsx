@@ -1,9 +1,21 @@
 import Link from "next/link";
 import { MapPin, Phone, Mail } from "lucide-react";
 import Image from "next/image";
+import { prisma } from "@/lib/prisma";
 
-export const Footer = () => {
+export const Footer = async () => {
   const currentYear = new Date().getFullYear();
+
+  let courses: any[] = [];
+  try {
+    courses = await prisma.course.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+      take: 4
+    });
+  } catch (err) {
+    console.error("Failed to fetch courses in footer:", err);
+  }
 
   return (
     <footer className="w-full border-t-4 border-black bg-[#1a1a2e] text-white">
@@ -76,21 +88,39 @@ export const Footer = () => {
               Khóa Học
             </h4>
             <ul className="space-y-2.5 text-xs font-semibold text-gray-400">
-              {[
-                { label: "Lớp Mầm Non (4-6 tuổi)", href: "/pricing" },
-                { label: "Lớp Năng Khiếu (7-9 tuổi)", href: "/pricing" },
-                { label: "Lớp Nghệ Sĩ Nhí (10-12 tuổi)", href: "/pricing" },
-                { label: "Đăng ký học thử miễn phí", href: "/enroll" },
-              ].map((item, idx) => (
-                <li key={idx}>
-                  <Link
-                    href={item.href}
-                    className="hover:text-amber-300 hover:translate-x-1 inline-block transition-all duration-150"
-                  >
-                    → {item.label}
-                  </Link>
-                </li>
-              ))}
+              {courses.length > 0 ? (
+                courses.map((course) => (
+                  <li key={course.id}>
+                    <Link
+                      href="/pricing"
+                      className="hover:text-amber-300 hover:translate-x-1 inline-block transition-all duration-150"
+                    >
+                      → {course.title} {course.audience && `(${course.audience})`}
+                    </Link>
+                  </li>
+                ))
+              ) : (
+                <>
+                  <li>
+                    <Link href="/pricing" className="hover:text-amber-300 hover:translate-x-1 inline-block transition-all duration-150">
+                      → Lớp vẽ Mầm non (4-6 tuổi)
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/pricing" className="hover:text-amber-300 hover:translate-x-1 inline-block transition-all duration-150">
+                      → Lớp vẽ Năng khiếu (7-9 tuổi)
+                    </Link>
+                  </li>
+                </>
+              )}
+              <li>
+                <Link
+                  href="/enroll"
+                  className="hover:text-amber-300 hover:translate-x-1 inline-block transition-all duration-150 font-black text-white"
+                >
+                  → Đăng ký học thử miễn phí
+                </Link>
+              </li>
             </ul>
           </div>
 

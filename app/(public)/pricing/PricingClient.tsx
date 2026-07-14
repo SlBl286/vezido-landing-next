@@ -202,7 +202,7 @@ export default function PricingClient({ courses, categories }: PricingClientProp
                                 currentTab === "curriculum" ? "bg-[#baffc9] text-black" : "hover:bg-gray-100"
                               }`}
                             >
-                              📋 Lộ trình
+                              📋 Nội dung
                             </button>
                             <button
                               type="button"
@@ -240,18 +240,16 @@ export default function PricingClient({ courses, categories }: PricingClientProp
                             {currentTab === "curriculum" && (
                               <div className="space-y-2 animate-in fade-in duration-100">
                                 {course.content && course.content.length > 0 ? (
-                                  <div className="space-y-1.5">
+                                  <ul className="space-y-1">
                                     {course.content.map((lesson: string, i: number) => (
-                                      <div key={i} className="flex items-start gap-2 bg-gray-50 border border-black/10 rounded-lg p-2 text-[11px] font-semibold text-gray-700">
-                                        <span className="bg-[#ffd275] border border-black rounded px-1 text-[8px] font-black text-black shrink-0 mt-0.5">
-                                          Bài {i + 1}
-                                        </span>
+                                      <li key={i} className="flex items-start gap-1.5 text-left">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                                         <span>{lesson}</span>
-                                      </div>
+                                      </li>
                                     ))}
-                                  </div>
+                                  </ul>
                                 ) : (
-                                  <p className="text-gray-400 italic">Chưa có thông tin lộ trình.</p>
+                                  <p className="text-gray-400 italic">Chưa có thông tin nội dung.</p>
                                 )}
                               </div>
                             )}
