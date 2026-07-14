@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { Loader2, Ticket, TrendingUp, DollarSign, Calendar, RefreshCcw, Printer, Undo, Search, X, Edit2, Trash2, Plus, Percent, CreditCard, PieChart } from "lucide-react";
+import { Loader2, Ticket, TrendingUp, DollarSign, Calendar, RefreshCcw, Printer, Undo, Search, X, Edit2, Trash2, Plus, Percent, CreditCard, PieChart, FileSpreadsheet } from "lucide-react";
 import { cmsApi } from "@/lib/api-client";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
+import * as XLSX from "xlsx-js-style";
 
 export default function CMSInvoicesPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -198,6 +199,267 @@ export default function CMSInvoicesPage() {
     );
   };
 
+  const handleExportExcel = () => {
+    try {
+      // Helper to set column auto-widths
+      const autoFitColumns = (worksheet: any, rows: any[]) => {
+        if (rows.length === 0) return;
+        const keys = Object.keys(rows[0]);
+        worksheet['!cols'] = keys.map(key => {
+          let maxLen = key.toString().length;
+          rows.forEach(row => {
+            const val = row[key];
+            if (val !== undefined && val !== null) {
+              const len = val.toString().length;
+              if (len > maxLen) maxLen = len;
+            }
+          });
+          return { wch: Math.min(Math.max(maxLen + 3, 12), 40) }; // min width 12, max width 40
+        });
+      };
+
+      // Helper to apply currency format (#,##0 "đ")
+      const formatCurrencyColumn = (worksheet: any, colLetter: string, startRow: number, endRow: number) => {
+        for (let r = startRow; r <= endRow; r++) {
+          const cellRef = `${colLetter}${r}`;
+          if (worksheet[cellRef]) {
+            worksheet[cellRef].z = '#,##0" đ"';
+          }
+        }
+      };
+
+      // Borders config
+      const borderThin = {
+        top: { style: "thin", color: { rgb: "CCCCCC" } },
+        bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+        left: { style: "thin", color: { rgb: "E2E8F0" } },
+        right: { style: "thin", color: { rgb: "E2E8F0" } }
+      };
+
+      const borderBlackThin = {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+      };
+
+      // Style helper for Data Sheets
+      const styleJsonSheet = (worksheet: any, headerFillColor: string) => {
+        if (!worksheet['!ref']) return;
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        
+        for (let R = range.s.r; R <= range.e.r; R++) {
+          for (let C = range.s.c; C <= range.e.c; C++) {
+            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+            const cell = worksheet[cellRef];
+            if (!cell) continue;
+
+            if (R === 0) {
+              // Header Row
+              cell.s = {
+                font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "000000" } },
+                fill: { fgColor: { rgb: headerFillColor } }, // e.g. "A8E6CF"
+                alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                border: {
+                  top: { style: "medium", color: { rgb: "000000" } },
+                  bottom: { style: "medium", color: { rgb: "000000" } },
+                  left: { style: "thin", color: { rgb: "000000" } },
+                  right: { style: "thin", color: { rgb: "000000" } }
+                }
+              };
+            } else {
+              // Data Row
+              const isNumeric = cell.t === 'n' || (cell.z && cell.z.includes('đ'));
+              cell.s = {
+                font: { name: "Segoe UI", sz: 10, color: { rgb: "333333" } },
+                alignment: { 
+                  horizontal: isNumeric ? "right" : (cell.v?.toString().length < 15 ? "center" : "left"),
+                  vertical: "center" 
+                },
+                border: borderThin
+              };
+            }
+          }
+        }
+      };
+
+      // 1. Prepare Revenue Data
+      const revenueRows = invoices.map(inv => ({
+        "Mã học sinh": inv.studentCode || "",
+        "Tên học sinh": inv.studentName || "",
+        "Phụ huynh": inv.parentName || "",
+        "Số điện thoại PH": inv.parentPhone || "",
+        "Lớp học": inv.className || "",
+        "Khóa học": inv.courseTitle || "",
+        "Số tiền nộp (VNĐ)": inv.amountPaid || 0,
+        "Phương thức": inv.paymentMethod === "TRANSFER" ? "Chuyển khoản" : 
+                       inv.paymentMethod === "CASH" ? "Tiền mặt" : "Trực tuyến",
+        "Mã ưu đãi": inv.discountCode || "Không có",
+        "Ngày thanh toán": inv.paymentDate ? new Date(inv.paymentDate).toLocaleString("vi-VN") : "N/A"
+      }));
+
+      // 2. Prepare Expense Data
+      const expenseRows = expenses.map(exp => ({
+        "Nội dung khoản chi": exp.title || "",
+        "Loại chi phí": exp.category || "",
+        "Số tiền chi (VNĐ)": exp.amount || 0,
+        "Ngày chi": exp.date ? new Date(exp.date).toLocaleDateString("vi-VN") : "N/A",
+        "Mô tả / Chi tiết": exp.description || "",
+        "Loại ghi nhận": exp.isReadOnly ? "Tự động" : "Thủ công"
+      }));
+
+      const revLen = Math.max(2, revenueRows.length + 1);
+      const expLen = Math.max(2, expenseRows.length + 1);
+
+      // 3. Create Summary Data
+      const summaryData = [
+        ["BÁO CÁO TÀI CHÍNH TỔNG HỢP - VẼ ZÌ ĐÓ STUDIO"],
+        [`Ngày xuất báo cáo: ${new Date().toLocaleString("vi-VN")}`],
+        [],
+        ["Chỉ tiêu", "Giá trị (VNĐ)", "Mô tả"],
+        ["Tổng Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!G2:G${revLen})` }, "Tổng số tiền học phí thực tế đã thu nhận"],
+        ["Tổng Chi Tiêu Thực Tế", { f: `SUM('Nhật ký chi tiêu'!C2:C${expLen})` }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
+        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5-B6" }, "Hiệu số giữa Doanh thu và Chi phí"],
+        [],
+        ["Cơ cấu doanh thu theo phương thức thanh toán:"],
+        ["Phương thức", "Số tiền (VNĐ)"],
+        ["Chuyển khoản", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Chuyển khoản", 'Doanh thu học phí'!G2:G${revLen})` }],
+        ["Tiền mặt", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Tiền mặt", 'Doanh thu học phí'!G2:G${revLen})` }],
+        ["Trực tuyến", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Trực tuyến", 'Doanh thu học phí'!G2:G${revLen})` }],
+      ];
+
+      // 4. Create Workbook & Sheets
+      const workbook = XLSX.utils.book_new();
+
+      // Sheet 1: Summary Sheet
+      const worksheetSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      worksheetSummary['!cols'] = [
+        { wch: 35 }, // Col A width
+        { wch: 20 }, // Col B width
+        { wch: 45 }  // Col C width
+      ];
+      // Format currency fields in Summary Sheet
+      ["B5", "B6", "B7", "B11", "B12", "B13"].forEach(cellRef => {
+        if (worksheetSummary[cellRef]) {
+          worksheetSummary[cellRef].z = '#,##0" đ"';
+          worksheetSummary[cellRef].t = 'n';
+        }
+      });
+
+      // Merge header title A1:C1
+      worksheetSummary['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }
+      ];
+
+      // Style Summary Sheet cells
+      const rangeSum = XLSX.utils.decode_range(worksheetSummary['!ref'] || "A1:C13");
+      for (let R = rangeSum.s.r; R <= rangeSum.e.r; R++) {
+        for (let C = rangeSum.s.c; C <= rangeSum.e.c; C++) {
+          const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+          const cell = worksheetSummary[cellRef];
+          if (!cell) continue;
+
+          if (R === 0) {
+            // Main title style
+            cell.s = {
+              font: { name: "Segoe UI", sz: 14, bold: true, color: { rgb: "000000" } },
+              alignment: { horizontal: "left", vertical: "center" }
+            };
+          } else if (R === 1) {
+            // Date description style
+            cell.s = {
+              font: { name: "Segoe UI", sz: 9.5, italic: true, color: { rgb: "666666" } }
+            };
+          } else if (R === 3) {
+            // Main table header style
+            cell.s = {
+              font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "000000" } },
+              fill: { fgColor: { rgb: "FFD275" } }, // Yellow/Gold
+              alignment: { horizontal: "center", vertical: "center" },
+              border: {
+                top: { style: "medium", color: { rgb: "000000" } },
+                bottom: { style: "medium", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            };
+          } else if (R === 4) {
+            // Total Revenue (Green highlighting)
+            cell.s = {
+              font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "1B5E20" } },
+              fill: { fgColor: { rgb: "E8F5E9" } }, // Emerald-50
+              border: borderBlackThin,
+              alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
+            };
+          } else if (R === 5) {
+            // Total Expenditure (Red highlighting)
+            cell.s = {
+              font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "B71C1C" } },
+              fill: { fgColor: { rgb: "FFEBEE" } }, // Rose-50
+              border: borderBlackThin,
+              alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
+            };
+          } else if (R === 6) {
+            // Net Profit (Blue highlighting & Double bottom border)
+            cell.s = {
+              font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "0D47A1" } },
+              fill: { fgColor: { rgb: "E3F2FD" } }, // Blue-50
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "double", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              },
+              alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
+            };
+          } else if (R === 8) {
+            // Subtitle
+            cell.s = {
+              font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "000000" } }
+            };
+          } else if (R === 9) {
+            // Sub-table headers
+            cell.s = {
+              font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: "000000" } },
+              fill: { fgColor: { rgb: "BAE1FF" } }, // Light Blue
+              alignment: { horizontal: "center", vertical: "center" },
+              border: borderBlackThin
+            };
+          } else if (R >= 10 && R <= 12) {
+            // Payment breakdown rows
+            cell.s = {
+              font: { name: "Segoe UI", sz: 10, color: { rgb: "333333" } },
+              border: borderBlackThin,
+              alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
+            };
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(workbook, worksheetSummary, "Tổng hợp tài chính");
+      
+      // Sheet 2: Revenue Sheet
+      const worksheetRevenue = XLSX.utils.json_to_sheet(revenueRows);
+      autoFitColumns(worksheetRevenue, revenueRows);
+      formatCurrencyColumn(worksheetRevenue, "G", 2, revenueRows.length + 1);
+      styleJsonSheet(worksheetRevenue, "A8E6CF"); // Mint Green headers
+      XLSX.utils.book_append_sheet(workbook, worksheetRevenue, "Doanh thu học phí");
+
+      // Sheet 3: Expense Sheet
+      const worksheetExpense = XLSX.utils.json_to_sheet(expenseRows);
+      autoFitColumns(worksheetExpense, expenseRows);
+      formatCurrencyColumn(worksheetExpense, "C", 2, expenseRows.length + 1);
+      styleJsonSheet(worksheetExpense, "FFAAA6"); // Light Pink/Rose headers
+      XLSX.utils.book_append_sheet(workbook, worksheetExpense, "Nhật ký chi tiêu");
+
+      // 5. Write Excel File
+      XLSX.writeFile(workbook, `Bao_cao_thu_chi_Vezido_${new Date().toISOString().split("T")[0]}.xlsx`);
+      showNotification("Thành công 🎉", "Xuất file Excel báo cáo thu chi thành công.", "success");
+    } catch (err: any) {
+      showNotification("Lỗi xuất file", err.message || "Không thể xuất file Excel.", "error");
+    }
+  };
+
   const isAdmin = session?.user?.role === "ADMIN";
 
   if (!isAdmin) {
@@ -261,13 +523,22 @@ export default function CMSInvoicesPage() {
             Theo dõi dòng tiền học phí, quản lý chi tiêu nội bộ và thống kê báo cáo Lãi/Lỗ của trung tâm.
           </p>
         </div>
-        <button
-          onClick={fetchInvoicesData}
-          className="bg-white hover:bg-stone-50 text-black border-3 border-black font-black text-sm px-5 py-3 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] flex items-center gap-1.5 cursor-pointer shrink-0"
-        >
-          <RefreshCcw className="w-4 h-4" />
-          <span>Làm mới</span>
-        </button>
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+          <button
+            onClick={handleExportExcel}
+            className="bg-[#a8e6cf] hover:bg-[#8fd4ba] text-black border-3 border-black font-black text-sm px-5 py-3 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Xuất Excel</span>
+          </button>
+          <button
+            onClick={fetchInvoicesData}
+            className="bg-white hover:bg-stone-50 text-black border-3 border-black font-black text-sm px-5 py-3 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <RefreshCcw className="w-4 h-4" />
+            <span>Làm mới</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Summary row */}

@@ -41,5 +41,5 @@ COPY --from=builder /app/lib/generated/prisma ./lib/generated/prisma
 
 EXPOSE 2202
 
-# Run migrations and start the next server
-CMD ["sh", "-c", "bun prisma migrate deploy && bun run start"]
+# Run migrations, generate client, and start the next server
+CMD ["sh", "-c", "bun prisma generate && bun prisma migrate deploy && bun prisma db push && bun run start"]

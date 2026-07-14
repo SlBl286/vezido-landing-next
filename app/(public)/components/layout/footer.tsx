@@ -116,10 +116,10 @@ export const Footer = () => {
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 shrink-0 text-sky-400" />
                 <a
-                  href="mailto:lienhe@vezido.edu.vn"
+                  href="mailto:lienhe@vezido.ink"
                   className="hover:text-white transition-colors"
                 >
-                  lienhe@vezido.edu.vn
+                  lienhe@vezido.ink
                 </a>
               </li>
             </ul>

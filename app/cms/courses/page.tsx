@@ -156,13 +156,18 @@ export default function CoursesManagerPage() {
 
   const handleOpenEdit = (course: any) => {
     setSelectedCourse(course);
+    const isByMonth = (course.studyType || "BY_COURSE") === "BY_MONTH";
+    const durationVal = course.duration ? (parseInt(course.duration, 10) || 12) : 12;
+    const feeVal = Number(course.fee) || 0;
+    const feeToDisplay = isByMonth ? Math.round(feeVal / durationVal) : feeVal;
+
     setForm({
       title: course.title,
       type: course.type || "AGE_BASED",
       audience: course.audience,
-      duration: course.duration ? String(parseInt(course.duration, 10) || 12) : "12",
-      fee: String(course.fee),
-      feeUnit: course.feeUnit || (course.studyType === "BY_MONTH" ? "tháng" : "khóa"),
+      duration: String(durationVal),
+      fee: String(feeToDisplay),
+      feeUnit: course.feeUnit || (isByMonth ? "tháng" : "khóa"),
       feeNote: course.feeNote || "",
       objectives: course.objectives?.length > 0 ? [...course.objectives] : [""],
       content: course.content?.length > 0 ? [...course.content] : [""],
@@ -258,9 +263,13 @@ export default function CoursesManagerPage() {
     setError("");
     setSubmitting(true);
 
+    const finalFee = form.studyType === "BY_MONTH" 
+      ? Number(form.fee) * (Number(form.duration) || 0)
+      : Number(form.fee);
+
     const payload = {
       ...form,
-      fee: Number(form.fee),
+      fee: finalFee,
       objectives: form.objectives.filter(o => o.trim().length > 0),
       content: form.content.filter(c => c.trim().length > 0),
       benefits: form.benefits.filter(b => b.trim().length > 0),
@@ -584,12 +593,12 @@ export default function CoursesManagerPage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-black text-gray-800 mb-1">
-                    {form.studyType === "BY_MONTH" ? "Học phí 1 tháng (VNĐ) *" : "Học phí 1 khóa (VNĐ) *"}
+                    {form.studyType === "BY_MONTH" ? "Học phí 1 buổi (VNĐ) *" : "Học phí 1 khóa (VNĐ) *"}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ví dụ: 160.000"
+                    placeholder={form.studyType === "BY_MONTH" ? "Ví dụ: 150.000" : "Ví dụ: 1.800.000"}
                     className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
                     value={form.fee ? Number(form.fee).toLocaleString("vi-VN") : ""}
                     onChange={e => {
@@ -598,9 +607,16 @@ export default function CoursesManagerPage() {
                     }}
                   />
                   {form.fee && Number(form.fee) > 0 && (
-                    <p className="text-[10px] text-amber-700 font-extrabold mt-1 italic bg-amber-50 border border-amber-200 rounded-lg p-1.5 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-                      ✍️ Bằng chữ: {spellNumberVietnamese(Number(form.fee))}
-                    </p>
+                    <div className="space-y-1.5 mt-1.5">
+                      <p className="text-[10px] text-amber-700 font-extrabold italic bg-amber-50 border border-amber-200 rounded-lg p-1.5 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                        ✍️ Bằng chữ ({form.studyType === "BY_MONTH" ? "cho 1 buổi" : "cả khóa"}): {spellNumberVietnamese(Number(form.fee))}
+                      </p>
+                      {form.studyType === "BY_MONTH" && (
+                        <p className="text-[10px] text-sky-700 font-extrabold italic bg-sky-50 border border-sky-200 rounded-lg p-1.5 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                          💵 Tổng học phí 1 tháng ({form.duration || 0} buổi): {(Number(form.fee) * (Number(form.duration) || 0)).toLocaleString("vi-VN")} đ ({spellNumberVietnamese(Number(form.fee) * (Number(form.duration) || 0))})
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
 

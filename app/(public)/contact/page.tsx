@@ -101,7 +101,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="font-black text-sm text-gray-800">Hòm thư điện tử:</h4>
-                    <p className="text-xs font-semibold text-gray-500 mt-0.5">lienhe@vezido.edu.vn</p>
+                    <p className="text-xs font-semibold text-gray-500 mt-0.5">lienhe@vezido.ink</p>
                   </div>
                 </div>
 
