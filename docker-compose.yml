@@ -33,7 +33,6 @@ services:
       # Payment Configuration
       - PAY_API_KEY
     volumes:
-      - ./prisma:/app/prisma
       - /data/vezido/uploads:/app/public/uploads
 
 networks:
