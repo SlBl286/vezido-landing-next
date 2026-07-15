@@ -116,9 +116,11 @@ export async function POST(req: Request) {
       }
 
       // Secondary check: class name in content (e.g. "LOPMAM01")
-      const cleanClassName = removeVietnameseAccents(sc.class.name).replace(/\s+/g, "");
-      if (cleanClassName && normalizedContent.includes(cleanClassName)) {
-        score += 20;
+      if (sc.class) {
+        const cleanClassName = removeVietnameseAccents(sc.class.name).replace(/\s+/g, "");
+        if (cleanClassName && normalizedContent.includes(cleanClassName)) {
+          score += 20;
+        }
       }
 
       // Tertiary check: parent phone last 9 digits
@@ -130,8 +132,8 @@ export async function POST(req: Request) {
       }
 
       // Quaternary check: transfer amount matches expected fee
-      const sessions = parseInt(sc.class.course?.duration || "0", 10) || 0;
-      const feePerSession = sc.class.course?.fee || 0;
+      const sessions = sc.class ? (parseInt(sc.class.course?.duration || "0", 10) || 0) : 0;
+      const feePerSession = sc.class ? (sc.class.course?.fee || 0) : 0;
       const fee = sessions * feePerSession;
       let amountMatches = false;
 
@@ -190,7 +192,7 @@ export async function POST(req: Request) {
       const bestMatch = validMatches[0];
       const matched = bestMatch.sc;
 
-      console.log(`[SePay Webhook] Matched transaction to student class registration: ID=${matched.id}, Student=${matched.studentName}, Class=${matched.class.name}`);
+      console.log(`[SePay Webhook] Matched transaction to student class registration: ID=${matched.id}, Student=${matched.studentName}, Class=${matched.class?.name || "Chưa xếp lớp"}`);
 
       // 6. Update database record
       const finalPromoCode = bestMatch.matchedPromoCode || matched.discountCode || null;
@@ -218,7 +220,7 @@ export async function POST(req: Request) {
       sendPaymentNotification({
         studentName: matched.studentName,
         studentCode: matched.studentCode || undefined,
-        className: matched.class.name,
+        className: matched.class?.name || "Chưa xếp lớp",
         amount: transferAmount,
         gateway,
         content,

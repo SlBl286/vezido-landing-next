@@ -15,10 +15,10 @@ interface Student {
   id: string;
   studentCode: string | null;
   studentName: string;
-  studentAge: number;
-  parentName: string;
-  parentPhone: string;
-  classId?: string;
+  studentAge: number | null;
+  parentName: string | null;
+  parentPhone: string | null;
+  classId?: string | null;
   class?: any;
   enrollments?: any[];
   createdAt: string;
@@ -151,8 +151,8 @@ export default function StudentsPage() {
     const matchesSearch = (
       s.studentName.toLowerCase().includes(term) ||
       (s.studentCode && s.studentCode.toLowerCase().includes(term)) ||
-      s.parentPhone.includes(term) ||
-      s.parentName.toLowerCase().includes(term)
+      (s.parentPhone && s.parentPhone.includes(term)) ||
+      (s.parentName && s.parentName.toLowerCase().includes(term))
     );
 
     if (!matchesSearch) return false;
@@ -261,7 +261,8 @@ export default function StudentsPage() {
             </thead>
             <tbody>
               {filteredStudents.map((student) => {
-                const hasUnpaid = student.enrollments?.some((e: any) => !e.isPaid);
+                const enrollmentsCount = student.enrollments?.length || 0;
+                const hasUnpaid = enrollmentsCount > 0 && student.enrollments?.some((e: any) => !e.isPaid);
                 const unpaidCount = student.enrollments?.filter((e: any) => !e.isPaid).length || 0;
                 
                 return (
@@ -279,31 +280,41 @@ export default function StudentsPage() {
                       {student.studentName}
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <span className="bg-amber-100 border-2 border-black rounded-lg px-2 py-0.5 font-bold text-amber-800 text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
-                        {student.studentAge} tuổi
-                      </span>
+                      {student.studentAge ? (
+                        <span className="bg-amber-100 border-2 border-black rounded-lg px-2 py-0.5 font-bold text-amber-800 text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
+                          {student.studentAge} tuổi
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs italic">N/A</span>
+                      )}
                     </td>
                     <td className="py-4 px-4 font-bold text-gray-700">
-                      {student.parentName}
+                      {student.parentName || <span className="text-gray-400 font-normal italic">Chưa nhập</span>}
                     </td>
                     <td className="py-4 px-4 font-bold text-gray-900">
-                      {student.parentPhone}
+                      {student.parentPhone || <span className="text-gray-400 font-normal italic">Chưa nhập</span>}
                     </td>
                     <td className="py-4 px-4">
-                      <button
-                        onClick={() => setSelectedStudentForClassesPayment(student)}
-                        className={`inline-flex items-center gap-1.5 border-2 border-black rounded-lg px-3 py-1.5 text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0 active:translate-y-0 active:shadow-none transition-all cursor-pointer ${
-                          hasUnpaid 
-                            ? "bg-[#ffaaa6] hover:bg-[#ff8b94] text-rose-950" 
-                            : "bg-[#a8e6cf] hover:bg-[#96d8c0] text-emerald-950"
-                        }`}
-                      >
-                        {hasUnpaid ? (
-                          <span>⚠️ Chưa đóng ({unpaidCount})</span>
-                        ) : (
-                          <span>✓ Đã đóng đủ</span>
-                        )}
-                      </button>
+                      {enrollmentsCount === 0 ? (
+                        <span className="inline-flex items-center gap-1.5 border-2 border-black rounded-lg px-2.5 py-1 text-xs font-black bg-stone-100 text-stone-500 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap">
+                          Chưa xếp lớp
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedStudentForClassesPayment(student)}
+                          className={`inline-flex items-center gap-1.5 border-2 border-black rounded-lg px-3 py-1.5 text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-x-0 active:translate-y-0 active:shadow-none transition-all cursor-pointer ${
+                            hasUnpaid 
+                              ? "bg-[#ffaaa6] hover:bg-[#ff8b94] text-rose-950" 
+                              : "bg-[#a8e6cf] hover:bg-[#96d8c0] text-emerald-950"
+                          }`}
+                        >
+                          {hasUnpaid ? (
+                            <span>⚠️ Chưa đóng ({unpaidCount})</span>
+                          ) : (
+                            <span>✓ Đã đóng đủ</span>
+                          )}
+                        </button>
+                      )}
                     </td>
                     <td className="py-4 px-4 text-gray-500 font-semibold text-xs">
                       <div className="flex items-center gap-1">

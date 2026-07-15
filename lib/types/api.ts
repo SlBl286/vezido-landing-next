@@ -100,11 +100,11 @@ export interface AttendanceSaveInput {
 
 export interface StudentEnrollInput {
   studentName: string;
-  studentAge: string | number;
-  parentName: string;
-  parentPhone: string;
+  studentAge?: string | number | null;
+  parentName?: string | null;
+  parentPhone?: string | null;
   classId: string;
-  studentCode?: string;
+  studentCode?: string | null;
   customDuration?: number | null;
 }
 

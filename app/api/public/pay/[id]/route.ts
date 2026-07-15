@@ -28,9 +28,11 @@ export async function GET(
       studentName: studentClass.studentName,
       studentCode: studentClass.studentCode,
       parentName: studentClass.parentName,
-      className: studentClass.class.name,
-      courseTitle: studentClass.class.course?.title || null,
-      courseFee: (parseInt(studentClass.class.course?.duration || "0", 10) || 0) * (studentClass.class.course?.fee || 0),
+      className: studentClass.class?.name || "Chưa xếp lớp",
+      courseTitle: studentClass.class?.course?.title || null,
+      courseFee: studentClass.class?.course 
+        ? (parseInt(studentClass.class.course.duration || "0", 10) || 0) * (studentClass.class.course.fee || 0)
+        : 0,
       isPaid: studentClass.isPaid,
       amountPaid: studentClass.amountPaid,
       discountCode: studentClass.discountCode,

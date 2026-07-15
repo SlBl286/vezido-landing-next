@@ -98,7 +98,7 @@ export default async function ReceiptPage({ params }: PageProps) {
     return notFound();
   }
 
-  const course = student.class.course;
+  const course = student.class?.course || null;
   const courseFeeUnit = course?.feeUnit || "buổi";
   const courseFeePerSession = course?.fee || 0;
   const courseSessions = course?.duration ? (parseInt(course.duration, 10) || 0) : 0;
@@ -188,13 +188,13 @@ export default async function ReceiptPage({ params }: PageProps) {
             </p>
             <p className="flex justify-between">
               <span className="text-gray-400 font-extrabold">Tuổi học viên:</span>
-              <span className="text-black font-semibold">{student.studentAge} tuổi</span>
+              <span className="text-black font-semibold">{student.studentAge ? `${student.studentAge} tuổi` : "N/A"}</span>
             </p>
           </div>
           <div className="space-y-2">
             <p className="flex justify-between">
               <span className="text-gray-400 font-extrabold">Lớp học đăng ký:</span>
-              <span className="text-black font-black">{student.class.name}</span>
+              <span className="text-black font-black">{student.class?.name || "Chưa xếp lớp"}</span>
             </p>
             <p className="flex justify-between">
               <span className="text-gray-400 font-extrabold">Khóa học liên kết:</span>
@@ -202,7 +202,9 @@ export default async function ReceiptPage({ params }: PageProps) {
             </p>
             <p className="flex justify-between">
               <span className="text-gray-400 font-extrabold">Người nộp tiền (Phụ huynh):</span>
-              <span className="text-black font-semibold">{student.parentName} ({student.parentPhone})</span>
+              <span className="text-black font-semibold">
+                {student.parentName || "N/A"} {student.parentPhone ? `(${student.parentPhone})` : ""}
+              </span>
             </p>
           </div>
         </div>
@@ -224,7 +226,7 @@ export default async function ReceiptPage({ params }: PageProps) {
               {/* Row 1: Course Fee */}
               <tr className="border-b border-black/10">
                 <td className="py-3 px-4 font-bold">
-                  Học phí khóa học {course?.title || student.class.name}
+                  Học phí khóa học {course?.title || student.class?.name || "Chưa xếp lớp"}
                   {course && (
                     <span className="text-[10px] text-gray-400 font-semibold block mt-0.5">
                       Phân loại: {course.classCategory?.name || "Chưa phân loại"} {course.level ? `- Cấp độ ${course.level}` : ""}

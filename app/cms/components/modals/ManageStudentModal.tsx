@@ -103,8 +103,8 @@ export function ManageStudentModal({
 
     const { studentName, studentAge, parentName, parentPhone, classId } = form;
 
-    if (!studentName || !studentAge || !parentName || !parentPhone || !classId) {
-      setError("Vui lòng điền đầy đủ các thông tin bắt buộc");
+    if (!studentName) {
+      setError("Vui lòng nhập Tên học sinh");
       setSubmitting(false);
       return;
     }
@@ -112,7 +112,9 @@ export function ManageStudentModal({
     try {
       const payload = {
         ...form,
-        studentAge: parseInt(studentAge, 10),
+        studentAge: studentAge ? parseInt(studentAge, 10) : null,
+        parentName: parentName || null,
+        parentPhone: parentPhone || null,
         customDuration: form.customDuration ? parseInt(form.customDuration, 10) : null
       };
 
@@ -137,10 +139,13 @@ export function ManageStudentModal({
 
   if (!isOpen) return null;
 
-  const classOptions = classes.map((c) => ({
-    value: c.id,
-    label: `${c.name} (${c.schedule || "Chưa có lịch"})`
-  }));
+  const classOptions = [
+    { value: "", label: "-- Chưa xếp lớp --" },
+    ...classes.map((c) => ({
+      value: c.id,
+      label: `${c.name} (${c.schedule || "Chưa có lịch"})`
+    }))
+  ];
 
   return (
     <>
@@ -190,14 +195,13 @@ export function ManageStudentModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="block text-xs font-black text-black uppercase">Tuổi *</label>
+                <label className="block text-xs font-black text-black uppercase">Tuổi</label>
                 <input
                   type="number"
                   value={form.studentAge}
                   onChange={(e) => setForm({ ...form, studentAge: e.target.value })}
                   placeholder="Ví dụ: 8"
                   className="w-full border-3 border-black rounded-xl p-2.5 bg-white text-sm font-bold placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                  required
                 />
               </div>
 
@@ -218,32 +222,30 @@ export function ManageStudentModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="block text-xs font-black text-black uppercase">Tên phụ huynh *</label>
+                <label className="block text-xs font-black text-black uppercase">Tên phụ huynh</label>
                 <input
                   type="text"
                   value={form.parentName}
                   onChange={(e) => setForm({ ...form, parentName: e.target.value })}
                   placeholder="Ví dụ: Nguyễn Văn B"
                   className="w-full border-3 border-black rounded-xl p-2.5 bg-white text-sm font-bold placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                  required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-black text-black uppercase">Số điện thoại *</label>
+                <label className="block text-xs font-black text-black uppercase">Số điện thoại</label>
                 <input
                   type="tel"
                   value={form.parentPhone}
                   onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
                   placeholder="Ví dụ: 0912345678"
                   className="w-full border-3 border-black rounded-xl p-2.5 bg-white text-sm font-bold placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                  required
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-black text-black uppercase">Xếp lớp học *</label>
+              <label className="block text-xs font-black text-black uppercase">Xếp lớp học</label>
               {loadingClasses ? (
                 <div className="flex items-center gap-2 text-sm text-gray-500 font-bold p-2.5">
                   <Loader2 className="w-4 h-4 animate-spin text-amber-500" />

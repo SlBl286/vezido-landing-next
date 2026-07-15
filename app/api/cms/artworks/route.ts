@@ -63,13 +63,13 @@ export async function GET(req: Request) {
     const base = enrollments[0];
     
     // Extract enrolled classes
-    const classes = enrollments.map(e => ({
-      id: e.class.id,
-      name: e.class.name,
-      schedule: e.class.schedule || "Chưa xếp lịch",
-      room: e.class.room || "Trực tiếp tại trung tâm",
-      teacherName: e.class.teachers && e.class.teachers.length > 0
-        ? e.class.teachers.map(t => t.user.name || "Giáo viên").join(", ")
+    const classes = enrollments.filter(e => e.class).map(e => ({
+      id: e.class!.id,
+      name: e.class!.name,
+      schedule: e.class!.schedule || "Chưa xếp lịch",
+      room: e.class!.room || "Trực tiếp tại trung tâm",
+      teacherName: e.class!.teachers && e.class!.teachers.length > 0
+        ? e.class!.teachers.map(t => t.user.name || "Giáo viên").join(", ")
         : "Chưa phân công"
     }));
 

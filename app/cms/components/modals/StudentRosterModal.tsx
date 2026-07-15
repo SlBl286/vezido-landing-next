@@ -147,15 +147,19 @@ export function StudentRosterModal({
 
     const { studentName, studentAge, parentName, parentPhone } = studentForm;
 
-    if (!studentName || !studentAge || !parentName || !parentPhone) {
-      setError("Vui lòng điền đầy đủ thông tin học sinh");
+    if (!studentName) {
+      setError("Vui lòng điền tên học sinh");
       setSubmitting(false);
       return;
     }
 
     try {
       await cmsApi.students.enroll({
-        ...studentForm,
+        studentName,
+        studentAge: studentAge ? parseInt(studentAge, 10) : null,
+        parentName: parentName || null,
+        parentPhone: parentPhone || null,
+        studentCode: studentForm.studentCode || null,
         classId: selectedClass.id
       });
       
@@ -397,10 +401,9 @@ export function StudentRosterModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-800 mb-1">Tuổi học sinh *</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">Tuổi học sinh</label>
                   <input
                     type="number"
-                    required
                     min={1}
                     max={18}
                     readOnly={isReadOnly}
@@ -414,10 +417,9 @@ export function StudentRosterModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-800 mb-1">Tên phụ huynh *</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">Tên phụ huynh</label>
                   <input
                     type="text"
-                    required
                     readOnly={isReadOnly}
                     placeholder="Họ tên cha hoặc mẹ"
                     className={`w-full border-2 border-black rounded-lg p-2 text-sm font-medium focus:outline-none ${
@@ -429,10 +431,9 @@ export function StudentRosterModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-800 mb-1">Số điện thoại phụ huynh *</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">Số điện thoại phụ huynh</label>
                   <input
                     type="tel"
-                    required
                     readOnly={isReadOnly}
                     placeholder="Số điện thoại liên lạc"
                     className={`w-full border-2 border-black rounded-lg p-2 text-sm font-medium focus:outline-none ${

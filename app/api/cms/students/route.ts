@@ -173,8 +173,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { studentName, studentAge, parentName, parentPhone, classId, studentCode, customDuration } = body;
 
-    if (!studentName || !studentAge || !parentName || !parentPhone || !classId) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!studentName) {
+      return NextResponse.json({ error: "Missing required fields: studentName is required." }, { status: 400 });
     }
 
     // Check permissions
@@ -246,10 +246,10 @@ export async function POST(req: Request) {
     const student = await prisma.studentClass.create({
       data: {
         studentName,
-        studentAge: parseInt(studentAge, 10),
-        parentName,
-        parentPhone,
-        classId,
+        studentAge: studentAge ? parseInt(studentAge, 10) : null,
+        parentName: parentName || null,
+        parentPhone: parentPhone || null,
+        classId: classId || null,
         studentCode: finalStudentCode,
         customDuration: customDuration !== undefined && customDuration !== null && customDuration !== "" ? parseInt(customDuration, 10) : null,
       },
@@ -302,7 +302,7 @@ export async function DELETE(req: Request) {
         where: { userId },
       });
 
-      const isTeacherAssigned = student.class.teachers.some(t => t.id === teacherProfile?.id);
+      const isTeacherAssigned = student.class?.teachers.some(t => t.id === teacherProfile?.id) || false;
       if (!teacherProfile || !isTeacherAssigned) {
         return NextResponse.json({ error: "Forbidden - You do not teach this class" }, { status: 403 });
       }
@@ -360,7 +360,7 @@ export async function PUT(req: Request) {
       const teacherProfile = await prisma.teacher.findUnique({
         where: { userId },
       });
-      const isTeacherAssigned = currentStudent.class.teachers.some(t => t.id === teacherProfile?.id);
+      const isTeacherAssigned = currentStudent.class?.teachers.some(t => t.id === teacherProfile?.id) || false;
       if (!teacherProfile || !isTeacherAssigned) {
         return NextResponse.json({ error: "Forbidden - You do not teach this class" }, { status: 403 });
       }
@@ -406,7 +406,7 @@ export async function PUT(req: Request) {
     if (parentName !== undefined) dataToUpdate.parentName = parentName;
     if (parentPhone !== undefined) dataToUpdate.parentPhone = parentPhone;
     if (studentCode !== undefined) dataToUpdate.studentCode = studentCode || null;
-    if (classId !== undefined) dataToUpdate.classId = classId;
+    if (classId !== undefined) dataToUpdate.classId = classId || null;
     if (customDuration !== undefined) {
       dataToUpdate.customDuration = customDuration !== null && customDuration !== "" ? Number(customDuration) : null;
     }

@@ -115,11 +115,11 @@ model StudentClass {
   id                 String       @id @default(cuid())
   studentCode        String?      // Mã học sinh để theo dõi nhiều khóa
   studentName        String
-  studentAge         Int
-  parentName         String
-  parentPhone        String
-  classId            String
-  class              Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentAge         Int?
+  parentName         String?
+  parentPhone         String?
+  classId            String?
+  class              Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
   isPaid             Boolean      @default(false)
   amountPaid         Float?
   discountCode       String?

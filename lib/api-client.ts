@@ -167,7 +167,7 @@ export const cmsApi = {
       method: "DELETE",
     }),
 
-    update: (id: string, data: { studentName?: string; studentAge?: number; parentName?: string; parentPhone?: string; studentCode?: string | null; classId?: string; customDuration?: number | null }) => fetchJson<{ student: any }>(`/api/cms/students?id=${id}`, {
+    update: (id: string, data: { studentName?: string; studentAge?: number | null; parentName?: string | null; parentPhone?: string | null; studentCode?: string | null; classId?: string; customDuration?: number | null }) => fetchJson<{ student: any }>(`/api/cms/students?id=${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
