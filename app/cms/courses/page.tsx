@@ -53,8 +53,6 @@ export default function CoursesManagerPage() {
     const cleanSearch = removeVietnameseTones(searchTerm);
 
     return courses.filter(course => {
-      if (!cleanSearch) return true;
-
       const titleClean = removeVietnameseTones(course.title || "");
       const audienceClean = removeVietnameseTones(course.audience || "");
       const levelClean = removeVietnameseTones(course.level || "");
@@ -64,14 +62,15 @@ export default function CoursesManagerPage() {
       const contentClean = (course.content || []).map((c: string) => removeVietnameseTones(c)).join(" ");
       const benefitsClean = (course.benefits || []).map((b: string) => removeVietnameseTones(b)).join(" ");
 
-      const matchesSearch =
+      const matchesSearch = !cleanSearch || (
         titleClean.includes(cleanSearch) ||
         audienceClean.includes(cleanSearch) ||
         levelClean.includes(cleanSearch) ||
         feeNoteClean.includes(cleanSearch) ||
         objectivesClean.includes(cleanSearch) ||
         contentClean.includes(cleanSearch) ||
-        benefitsClean.includes(cleanSearch);
+        benefitsClean.includes(cleanSearch)
+      );
       
       const matchesCategory = 
         filterCategoryId === "ALL" || 

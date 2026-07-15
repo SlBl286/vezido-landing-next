@@ -509,16 +509,16 @@ export default function CMSInvoicesPage() {
         [`Ngày xuất báo cáo: ${new Date().toLocaleString("vi-VN")}`],
         [],
         ["Chỉ tiêu", "Giá trị (VNĐ)", "Mô tả"],
-        ["Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!G2:G${revLen})` }, "Tổng số tiền học phí thực tế đã thu nhận"],
-        ["Doanh Thu Khác", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Thu nhập khác", 'Nhật ký thu chi'!D2:D${expLen})` }, "Các khoản thu nhập khác ngoài học phí"],
-        ["Tổng Chi Tiêu Thực Tế", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Chi tiêu thực tế", 'Nhật ký thu chi'!D2:D${expLen})` }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
-        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5+B6-B7" }, "Hiệu số giữa Doanh thu và Chi phí"],
+        ["Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!G2:G${revLen})`, v: 0 }, "Tổng số tiền học phí thực tế đã thu nhận"],
+        ["Doanh Thu Khác", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Thu nhập khác", 'Nhật ký thu chi'!D2:D${expLen})`, v: 0 }, "Các khoản thu nhập khác ngoài học phí"],
+        ["Tổng Chi Tiêu Thực Tế", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Chi tiêu thực tế", 'Nhật ký thu chi'!D2:D${expLen})`, v: 0 }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
+        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5+B6-B7", v: 0 }, "Hiệu số giữa Doanh thu và Chi phí"],
         [],
         ["Cơ cấu doanh thu theo phương thức thanh toán:"],
         ["Phương thức", "Số tiền (VNĐ)"],
-        ["Chuyển khoản", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Chuyển khoản", 'Doanh thu học phí'!G2:G${revLen})` }],
-        ["Tiền mặt", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Tiền mặt", 'Doanh thu học phí'!G2:G${revLen})` }],
-        ["Trực tuyến", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Trực tuyến", 'Doanh thu học phí'!G2:G${revLen})` }],
+        ["Chuyển khoản", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Chuyển khoản", 'Doanh thu học phí'!G2:G${revLen})`, v: 0 }],
+        ["Tiền mặt", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Tiền mặt", 'Doanh thu học phí'!G2:G${revLen})`, v: 0 }],
+        ["Trực tuyến", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Trực tuyến", 'Doanh thu học phí'!G2:G${revLen})`, v: 0 }],
       ];
 
       // 4. Create Workbook & Sheets
