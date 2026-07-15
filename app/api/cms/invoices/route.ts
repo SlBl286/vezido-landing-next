@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { checkAndGenerateRecurring } from "../expenses/recurring/helper";
 
 export async function GET() {
   const session = await auth();
@@ -14,6 +15,9 @@ export async function GET() {
   }
 
   try {
+    // Auto-generate recurring transactions
+    await checkAndGenerateRecurring();
+
     // Fetch all student enrollments that have been paid
     const paidStudents = await prisma.studentClass.findMany({
       where: {
@@ -33,6 +37,9 @@ export async function GET() {
 
     // Fetch all general expenses
     const generalExpenses = await prisma.expense.findMany({
+      include: {
+        category: true
+      },
       orderBy: {
         date: "desc"
       }
@@ -62,7 +69,9 @@ export async function GET() {
       id: e.id,
       title: e.title,
       amount: e.amount,
-      category: e.category,
+      type: e.type, // "EXPENSE" or "REVENUE"
+      category: e.category?.name || "Khác",
+      categoryId: e.categoryId,
       date: e.date,
       description: e.description,
       invoices: e.invoices || [],
@@ -74,6 +83,7 @@ export async function GET() {
       id: tx.id,
       title: `Nhập họa cụ: ${tx.item?.name || "Họa cụ"} (x${tx.quantity} ${tx.item?.unit || "cái"})`,
       amount: tx.totalCost || 0,
+      type: "EXPENSE",
       category: "Họa cụ",
       date: tx.date,
       description: tx.purpose || "Tự động ghi nhận từ Quản lý Kho họa cụ",
@@ -81,7 +91,7 @@ export async function GET() {
       isReadOnly: true
     }));
 
-    // Combine all expenses
+    // Combine all expenses/revenues
     const allExpenses = [...mappedGeneralExpenses, ...mappedSupplyExpenses].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
@@ -128,17 +138,25 @@ export async function GET() {
 
     allExpenses.forEach((exp) => {
       const amount = exp.amount || 0;
-      totalExpense += amount;
-
-      // Expense category breakdown
-      const cat = exp.category || "Khác";
-      if (!expenseCategoryBreakdown[cat]) {
-        expenseCategoryBreakdown[cat] = {
-          category: cat,
-          revenue: 0
-        };
+      const isRevenue = exp.type === "REVENUE";
+      
+      if (isRevenue) {
+        totalRevenue += amount;
+      } else {
+        totalExpense += amount;
       }
-      expenseCategoryBreakdown[cat].revenue += amount;
+
+      // Expense category breakdown (only for actual expenses)
+      if (!isRevenue) {
+        const cat = exp.category || "Khác";
+        if (!expenseCategoryBreakdown[cat]) {
+          expenseCategoryBreakdown[cat] = {
+            category: cat,
+            revenue: 0
+          };
+        }
+        expenseCategoryBreakdown[cat].revenue += amount;
+      }
 
       // Monthly breakdown
       const expDate = exp.date ? new Date(exp.date) : new Date();
@@ -153,7 +171,12 @@ export async function GET() {
           profit: 0
         };
       }
-      monthlyBreakdown[monthKey].expense += amount;
+      
+      if (isRevenue) {
+        monthlyBreakdown[monthKey].revenue += amount;
+      } else {
+        monthlyBreakdown[monthKey].expense += amount;
+      }
     });
 
     // Compute monthly profits

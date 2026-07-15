@@ -335,16 +335,54 @@ model Promotion {
   updatedAt     DateTime  @updatedAt
 }
 
+model ExpenseCategory {
+  id                 String              @id @default(cuid())
+  name               String              @unique
+  expenses           Expense[]
+  recurringTemplates RecurringTemplate[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
 model Expense {
-  id                  String   @id @default(cuid())
-  title               String   // Tên khoản chi
-  amount              Float    // Số tiền chi
-  category            String   // Phân loại: "Vận hành", "Mặt bằng", "Lương", "Marketing", "Họa cụ", "Khác"
-  date                DateTime @default(now()) // Ngày chi tiêu
-  description         String?  @db.Text // Ghi chú chi tiết
-  invoices            String[] // Danh sách đường dẫn ảnh hóa đơn
-  supplyTransactionId String?  // Liên kết giao dịch kho (nếu có)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                  String            @id @default(cuid())
+  title               String            // Tên khoản chi/thu
+  amount              Float             // Số tiền
+  type                String            @default("EXPENSE") // "EXPENSE" hoặc "REVENUE"
+  categoryId          String?
+  category            ExpenseCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  date                DateTime          @default(now()) // Ngày giao dịch
+  description         String?           @db.Text // Ghi chú chi tiết
+  invoices            String[]          // Danh sách đường dẫn ảnh hóa đơn
+  supplyTransactionId String?           // Liên kết giao dịch kho (nếu có)
+  recurringHistory    RecurringHistory?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+}
+
+model RecurringTemplate {
+  id          String             @id @default(cuid())
+  title       String             // Tên khoản thu/chi cố định
+  amount      Float              // Số tiền
+  type        String             @default("EXPENSE") // "EXPENSE" hoặc "REVENUE"
+  dayOfMonth  Int                // Ngày tạo tự động hàng tháng (1-31)
+  categoryId  String?
+  category    ExpenseCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  description String?            @db.Text
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  history     RecurringHistory[]
+}
+
+model RecurringHistory {
+  id          String            @id @default(cuid())
+  templateId  String
+  template    RecurringTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  month       Int               // Tháng (1-12)
+  year        Int               // Năm
+  generatedAt DateTime          @default(now())
+  expenseId   String?           @unique
+  expense     Expense?          @relation(fields: [expenseId], references: [id], onDelete: SetNull)
 }
 

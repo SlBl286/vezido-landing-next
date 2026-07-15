@@ -144,7 +144,7 @@ export async function POST(req: Request) {
           data: {
             title: `Nhập họa cụ: ${item.name} (x${qtyVal} ${item.unit})`,
             amount: total,
-            category: "Họa cụ",
+            categoryId: "ec-hoa-cu",
             date: transaction.date,
             description: purpose || `Tự động tạo từ giao dịch kho cho vật phẩm: ${item.name}`,
             invoices: savedInvoices,

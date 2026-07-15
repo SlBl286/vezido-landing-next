@@ -4,6 +4,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Loader2, Ticket, TrendingUp, DollarSign, Calendar, RefreshCcw, Printer, Undo, Search, X, Edit2, Trash2, Plus, Percent, CreditCard, PieChart, FileSpreadsheet } from "lucide-react";
 import { cmsApi } from "@/lib/api-client";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
+import { CustomSelect } from "@/app/cms/components/ui/custom-select";
+import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
 import * as XLSX from "xlsx-js-style";
 
 export default function CMSInvoicesPage() {
@@ -22,6 +24,34 @@ export default function CMSInvoicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [session, setSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"REVENUE" | "EXPENSE">("REVENUE");
+  // Month & Year Filter states
+  const [filterMonth, setFilterMonth] = useState<string>("ALL");
+  const [filterYear, setFilterYear] = useState<string>("ALL");
+
+  // Expense categories states
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
+
+  // Recurring templates states
+  const [recurringTemplates, setRecurringTemplates] = useState<any[]>([]);
+  const [loadingRecurring, setLoadingRecurring] = useState(false);
+  const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [showAddEditRecurringModal, setShowAddEditRecurringModal] = useState(false);
+  const [selectedRecurring, setSelectedRecurring] = useState<any>(null);
+  const [recurringForm, setRecurringForm] = useState({
+    title: "",
+    amount: "",
+    type: "EXPENSE", // "EXPENSE" or "REVENUE"
+    dayOfMonth: "1",
+    categoryId: "",
+    description: "",
+    isActive: true
+  });
+  const [submittingRecurring, setSubmittingRecurring] = useState(false);
+  const [recurringError, setRecurringError] = useState("");
 
   // Expense modal states
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -29,7 +59,8 @@ export default function CMSInvoicesPage() {
   const [expenseForm, setExpenseForm] = useState({
     title: "",
     amount: "",
-    category: "Vận hành",
+    type: "EXPENSE", // "EXPENSE" or "REVENUE"
+    categoryId: "",
     date: new Date().toISOString().split("T")[0],
     description: "",
     invoices: [] as string[]
@@ -91,9 +122,35 @@ export default function CMSInvoicesPage() {
     }
   };
 
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const data = await cmsApi.expenses.listCategories();
+      setCategories(data.categories || []);
+    } catch (err: any) {
+      console.error("Failed to load expense categories:", err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const fetchRecurringTemplates = async () => {
+    setLoadingRecurring(true);
+    try {
+      const data = await cmsApi.expenses.listRecurring();
+      setRecurringTemplates(data.templates || []);
+    } catch (err: any) {
+      console.error("Failed to load recurring templates:", err);
+    } finally {
+      setLoadingRecurring(false);
+    }
+  };
+
   useEffect(() => {
     fetchSession();
     fetchInvoicesData();
+    fetchCategories();
+    fetchRecurringTemplates();
   }, []);
 
   const handleRefund = (id: string, name: string) => {
@@ -124,7 +181,8 @@ export default function CMSInvoicesPage() {
     setExpenseForm({
       title: "",
       amount: "",
-      category: "Vận hành",
+      type: "EXPENSE",
+      categoryId: categories[0]?.id || "",
       date: new Date().toISOString().split("T")[0],
       description: "",
       invoices: []
@@ -135,10 +193,12 @@ export default function CMSInvoicesPage() {
 
   const handleOpenEditExpense = (exp: any) => {
     setSelectedExpense(exp);
+    const matchedCat = categories.find(c => c.id === exp.categoryId || c.name === exp.category);
     setExpenseForm({
       title: exp.title,
       amount: String(exp.amount),
-      category: exp.category || "Vận hành",
+      type: exp.type || "EXPENSE",
+      categoryId: matchedCat?.id || categories[0]?.id || "",
       date: exp.date ? new Date(exp.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
       description: exp.description || "",
       invoices: exp.invoices || []
@@ -150,7 +210,7 @@ export default function CMSInvoicesPage() {
   const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!expenseForm.title.trim() || !expenseForm.amount) {
-      setExpenseError("Vui lòng nhập tên khoản chi và số tiền");
+      setExpenseError("Vui lòng nhập tên khoản và số tiền");
       return;
     }
     setSubmittingExpense(true);
@@ -159,7 +219,8 @@ export default function CMSInvoicesPage() {
     const payload = {
       title: expenseForm.title.trim(),
       amount: Number(expenseForm.amount),
-      category: expenseForm.category,
+      type: expenseForm.type,
+      categoryId: expenseForm.categoryId,
       date: new Date(expenseForm.date).toISOString(),
       description: expenseForm.description.trim() || null,
       invoices: expenseForm.invoices
@@ -168,18 +229,136 @@ export default function CMSInvoicesPage() {
     try {
       if (selectedExpense) {
         await cmsApi.expenses.update(selectedExpense.id, payload);
-        showNotification("Thành công 🎉", "Cập nhật chi tiêu thành công", "success");
+        showNotification("Thành công 🎉", "Cập nhật thành công", "success");
       } else {
         await cmsApi.expenses.create(payload);
-        showNotification("Thành công 💸", "Ghi nhận khoản chi tiêu mới thành công", "success");
+        showNotification("Thành công 💸", "Ghi nhận giao dịch mới thành công", "success");
       }
       setShowExpenseModal(false);
       fetchInvoicesData();
     } catch (err: any) {
-      setExpenseError(err.message || "Lỗi khi lưu thông tin chi tiêu");
+      setExpenseError(err.message || "Lỗi khi lưu giao dịch");
     } finally {
       setSubmittingExpense(false);
     }
+  };
+
+  // Recurring Template CRUD handlers
+  const handleOpenAddRecurring = () => {
+    setSelectedRecurring(null);
+    setRecurringForm({
+      title: "",
+      amount: "",
+      type: "EXPENSE",
+      dayOfMonth: "1",
+      categoryId: categories[0]?.id || "",
+      description: "",
+      isActive: true
+    });
+    setRecurringError("");
+    setShowAddEditRecurringModal(true);
+  };
+
+  const handleOpenEditRecurring = (template: any) => {
+    setSelectedRecurring(template);
+    setRecurringForm({
+      title: template.title,
+      amount: String(template.amount),
+      type: template.type || "EXPENSE",
+      dayOfMonth: String(template.dayOfMonth),
+      categoryId: template.categoryId || categories[0]?.id || "",
+      description: template.description || "",
+      isActive: template.isActive
+    });
+    setRecurringError("");
+    setShowAddEditRecurringModal(true);
+  };
+
+  const handleSaveRecurring = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recurringForm.title.trim() || !recurringForm.amount || !recurringForm.dayOfMonth) {
+      setRecurringError("Vui lòng điền đầy đủ các trường bắt buộc");
+      return;
+    }
+    setSubmittingRecurring(true);
+    setRecurringError("");
+
+    const payload = {
+      title: recurringForm.title.trim(),
+      amount: Number(recurringForm.amount),
+      type: recurringForm.type,
+      dayOfMonth: Number(recurringForm.dayOfMonth),
+      categoryId: recurringForm.categoryId || null,
+      description: recurringForm.description.trim() || null,
+      isActive: recurringForm.isActive
+    };
+
+    try {
+      if (selectedRecurring) {
+        await cmsApi.expenses.updateRecurring(selectedRecurring.id, payload);
+        showNotification("Thành công 🎉", "Cập nhật cấu hình định kỳ thành công", "success");
+      } else {
+        await cmsApi.expenses.createRecurring(payload);
+        showNotification("Thành công 💸", "Thêm cấu hình định kỳ mới thành công", "success");
+      }
+      setShowAddEditRecurringModal(false);
+      fetchRecurringTemplates();
+      fetchInvoicesData();
+    } catch (err: any) {
+      setRecurringError(err.message || "Lỗi khi lưu cấu hình");
+    } finally {
+      setSubmittingRecurring(false);
+    }
+  };
+
+  const handleDeleteRecurring = (id: string, title: string) => {
+    showNotification(
+      "Xác nhận xóa cấu hình định kỳ 🗑️",
+      `Bạn có chắc chắn muốn xóa cấu hình chi phí cố định "${title}"? Việc này sẽ không xóa các khoản thu/chi đã tự động tạo trước đó.`,
+      "confirm",
+      async () => {
+        try {
+          await cmsApi.expenses.deleteRecurring(id);
+          showNotification("Thành công", "Đã xóa cấu hình thành công", "success");
+          fetchRecurringTemplates();
+        } catch (err: any) {
+          showNotification("Lỗi", err.message || "Không thể xóa cấu hình", "error");
+        }
+      }
+    );
+  };
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    setAddingCategory(true);
+    try {
+      await cmsApi.expenses.createCategory({ name: newCategoryName });
+      setNewCategoryName("");
+      showNotification("Thành công 🎉", "Đã thêm danh mục chi phí mới thành công.", "success");
+      fetchCategories();
+    } catch (err: any) {
+      showNotification("Lỗi", err.message || "Không thể thêm danh mục chi phí", "error");
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    showNotification(
+      "Xác nhận xóa danh mục 🗑️",
+      `Bạn có chắc chắn muốn xóa danh mục "${name}"? Chỉ có thể xóa danh mục khi không có khoản chi tiêu nào sử dụng nó.`,
+      "confirm",
+      async () => {
+        try {
+          await cmsApi.expenses.deleteCategory(id);
+          showNotification("Thành công", "Đã xóa danh mục thành công", "success");
+          fetchCategories();
+        } catch (err: any) {
+          showNotification("Lỗi", err.message || "Không thể xóa danh mục", "error");
+        }
+      }
+    );
   };
 
   const handleDeleteExpense = (id: string, title: string) => {
@@ -284,7 +463,7 @@ export default function CMSInvoicesPage() {
       };
 
       // 1. Prepare Revenue Data
-      const revenueRows = invoices.map(inv => ({
+      const revenueRows = filteredInvoicesList.map(inv => ({
         "Mã học sinh": inv.studentCode || "",
         "Tên học sinh": inv.studentName || "",
         "Phụ huynh": inv.parentName || "",
@@ -299,11 +478,12 @@ export default function CMSInvoicesPage() {
       }));
 
       // 2. Prepare Expense Data
-      const expenseRows = expenses.map(exp => ({
-        "Nội dung khoản chi": exp.title || "",
-        "Loại chi phí": exp.category || "",
-        "Số tiền chi (VNĐ)": exp.amount || 0,
-        "Ngày chi": exp.date ? new Date(exp.date).toLocaleDateString("vi-VN") : "N/A",
+      const expenseRows = filteredExpensesList.map(exp => ({
+        "Nội dung giao dịch": exp.title || "",
+        "Loại giao dịch": exp.type === "REVENUE" ? "Thu nhập khác" : "Chi tiêu thực tế",
+        "Danh mục": exp.category || "",
+        "Số tiền (VNĐ)": exp.amount || 0,
+        "Ngày giao dịch": exp.date ? new Date(exp.date).toLocaleDateString("vi-VN") : "N/A",
         "Mô tả / Chi tiết": exp.description || "",
         "Loại ghi nhận": exp.isReadOnly ? "Tự động" : "Thủ công"
       }));
@@ -311,15 +491,28 @@ export default function CMSInvoicesPage() {
       const revLen = Math.max(2, revenueRows.length + 1);
       const expLen = Math.max(2, expenseRows.length + 1);
 
+      // Construct dynamic title based on filters
+      let reportTitle = "BÁO CÁO TÀI CHÍNH TỔNG HỢP";
+      if (filterYear !== "ALL" && filterMonth !== "ALL") {
+        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - THÁNG ${filterMonth}/${filterYear}`;
+      } else if (filterYear !== "ALL") {
+        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - NĂM ${filterYear}`;
+      } else if (filterMonth !== "ALL") {
+        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - THÁNG ${filterMonth} (TẤT CẢ CÁC NĂM)`;
+      } else {
+        reportTitle = "BÁO CÁO TÀI CHÍNH TỔNG HỢP - TOÀN BỘ THỜI GIAN";
+      }
+
       // 3. Create Summary Data
       const summaryData = [
-        ["BÁO CÁO TÀI CHÍNH TỔNG HỢP - VẼ ZÌ ĐÓ STUDIO"],
+        [reportTitle],
         [`Ngày xuất báo cáo: ${new Date().toLocaleString("vi-VN")}`],
         [],
         ["Chỉ tiêu", "Giá trị (VNĐ)", "Mô tả"],
-        ["Tổng Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!G2:G${revLen})` }, "Tổng số tiền học phí thực tế đã thu nhận"],
-        ["Tổng Chi Tiêu Thực Tế", { f: `SUM('Nhật ký chi tiêu'!C2:C${expLen})` }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
-        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5-B6" }, "Hiệu số giữa Doanh thu và Chi phí"],
+        ["Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!G2:G${revLen})` }, "Tổng số tiền học phí thực tế đã thu nhận"],
+        ["Doanh Thu Khác", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Thu nhập khác", 'Nhật ký thu chi'!D2:D${expLen})` }, "Các khoản thu nhập khác ngoài học phí"],
+        ["Tổng Chi Tiêu Thực Tế", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Chi tiêu thực tế", 'Nhật ký thu chi'!D2:D${expLen})` }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
+        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5+B6-B7" }, "Hiệu số giữa Doanh thu và Chi phí"],
         [],
         ["Cơ cấu doanh thu theo phương thức thanh toán:"],
         ["Phương thức", "Số tiền (VNĐ)"],
@@ -339,7 +532,7 @@ export default function CMSInvoicesPage() {
         { wch: 45 }  // Col C width
       ];
       // Format currency fields in Summary Sheet
-      ["B5", "B6", "B7", "B11", "B12", "B13"].forEach(cellRef => {
+      ["B5", "B6", "B7", "B8", "B12", "B13", "B14"].forEach(cellRef => {
         if (worksheetSummary[cellRef]) {
           worksheetSummary[cellRef].z = '#,##0" đ"';
           worksheetSummary[cellRef].t = 'n';
@@ -352,7 +545,7 @@ export default function CMSInvoicesPage() {
       ];
 
       // Style Summary Sheet cells
-      const rangeSum = XLSX.utils.decode_range(worksheetSummary['!ref'] || "A1:C13");
+      const rangeSum = XLSX.utils.decode_range(worksheetSummary['!ref'] || "A1:C14");
       for (let R = rangeSum.s.r; R <= rangeSum.e.r; R++) {
         for (let C = rangeSum.s.c; C <= rangeSum.e.c; C++) {
           const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
@@ -383,15 +576,15 @@ export default function CMSInvoicesPage() {
                 right: { style: "thin", color: { rgb: "000000" } }
               }
             };
-          } else if (R === 4) {
-            // Total Revenue (Green highlighting)
+          } else if (R === 4 || R === 5) {
+            // Doanh thu (Green highlighting)
             cell.s = {
               font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "1B5E20" } },
               fill: { fgColor: { rgb: "E8F5E9" } }, // Emerald-50
               border: borderBlackThin,
               alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
             };
-          } else if (R === 5) {
+          } else if (R === 6) {
             // Total Expenditure (Red highlighting)
             cell.s = {
               font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "B71C1C" } },
@@ -399,7 +592,7 @@ export default function CMSInvoicesPage() {
               border: borderBlackThin,
               alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
             };
-          } else if (R === 6) {
+          } else if (R === 7) {
             // Net Profit (Blue highlighting & Double bottom border)
             cell.s = {
               font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "0D47A1" } },
@@ -412,12 +605,12 @@ export default function CMSInvoicesPage() {
               },
               alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
             };
-          } else if (R === 8) {
+          } else if (R === 9) {
             // Subtitle
             cell.s = {
               font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "000000" } }
             };
-          } else if (R === 9) {
+          } else if (R === 10) {
             // Sub-table headers
             cell.s = {
               font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: "000000" } },
@@ -425,7 +618,7 @@ export default function CMSInvoicesPage() {
               alignment: { horizontal: "center", vertical: "center" },
               border: borderBlackThin
             };
-          } else if (R >= 10 && R <= 12) {
+          } else if (R >= 11 && R <= 13) {
             // Payment breakdown rows
             cell.s = {
               font: { name: "Segoe UI", sz: 10, color: { rgb: "333333" } },
@@ -439,18 +632,31 @@ export default function CMSInvoicesPage() {
       XLSX.utils.book_append_sheet(workbook, worksheetSummary, "Tổng hợp tài chính");
       
       // Sheet 2: Revenue Sheet
-      const worksheetRevenue = XLSX.utils.json_to_sheet(revenueRows);
+      const revenueHeaders = [
+        "Mã học sinh", "Tên học sinh", "Phụ huynh", "Số điện thoại PH",
+        "Lớp học", "Khóa học", "Số tiền nộp (VNĐ)", "Phương thức",
+        "Mã ưu đãi", "Ngày thanh toán"
+      ];
+      const worksheetRevenue = revenueRows.length === 0 
+        ? XLSX.utils.aoa_to_sheet([revenueHeaders])
+        : XLSX.utils.json_to_sheet(revenueRows);
       autoFitColumns(worksheetRevenue, revenueRows);
       formatCurrencyColumn(worksheetRevenue, "G", 2, revenueRows.length + 1);
       styleJsonSheet(worksheetRevenue, "A8E6CF"); // Mint Green headers
       XLSX.utils.book_append_sheet(workbook, worksheetRevenue, "Doanh thu học phí");
 
       // Sheet 3: Expense Sheet
-      const worksheetExpense = XLSX.utils.json_to_sheet(expenseRows);
+      const expenseHeaders = [
+        "Nội dung giao dịch", "Loại giao dịch", "Danh mục", "Số tiền (VNĐ)",
+        "Ngày giao dịch", "Mô tả / Chi tiết", "Loại ghi nhận"
+      ];
+      const worksheetExpense = expenseRows.length === 0
+        ? XLSX.utils.aoa_to_sheet([expenseHeaders])
+        : XLSX.utils.json_to_sheet(expenseRows);
       autoFitColumns(worksheetExpense, expenseRows);
-      formatCurrencyColumn(worksheetExpense, "C", 2, expenseRows.length + 1);
+      formatCurrencyColumn(worksheetExpense, "D", 2, expenseRows.length + 1);
       styleJsonSheet(worksheetExpense, "FFAAA6"); // Light Pink/Rose headers
-      XLSX.utils.book_append_sheet(workbook, worksheetExpense, "Nhật ký chi tiêu");
+      XLSX.utils.book_append_sheet(workbook, worksheetExpense, "Nhật ký thu chi");
 
       // 5. Write Excel File
       XLSX.writeFile(workbook, `Bao_cao_thu_chi_Vezido_${new Date().toISOString().split("T")[0]}.xlsx`);
@@ -459,6 +665,154 @@ export default function CMSInvoicesPage() {
       showNotification("Lỗi xuất file", err.message || "Không thể xuất file Excel.", "error");
     }
   };
+
+  // Calculate available years dynamically
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    invoices.forEach(inv => {
+      if (inv.paymentDate) {
+        years.add(new Date(inv.paymentDate).getFullYear().toString());
+      }
+    });
+    expenses.forEach(exp => {
+      if (exp.date) {
+        years.add(new Date(exp.date).getFullYear().toString());
+      }
+    });
+    if (years.size === 0) {
+      years.add(new Date().getFullYear().toString());
+    }
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [invoices, expenses]);
+
+  // Filter lists and calculate stats dynamically
+  const { filteredInvoicesList, filteredExpensesList, filteredStats } = useMemo(() => {
+    const filteredInvs = invoices.filter(inv => {
+      if (!inv.paymentDate) return false;
+      const d = new Date(inv.paymentDate);
+      const yMatch = filterYear === "ALL" || d.getFullYear().toString() === filterYear;
+      const mMatch = filterMonth === "ALL" || (d.getMonth() + 1).toString() === filterMonth;
+      return yMatch && mMatch;
+    });
+
+    const filteredExps = expenses.filter(exp => {
+      if (!exp.date) return false;
+      const d = new Date(exp.date);
+      const yMatch = filterYear === "ALL" || d.getFullYear().toString() === filterYear;
+      const mMatch = filterMonth === "ALL" || (d.getMonth() + 1).toString() === filterMonth;
+      return yMatch && mMatch;
+    });
+
+    let totalRevenue = 0;
+    let totalExpense = 0;
+    const courseBreakdown: Record<string, { title: string; count: number; revenue: number }> = {};
+    const expenseCategoryBreakdown: Record<string, { category: string; revenue: number }> = {};
+    const monthlyBreakdown: Record<string, { label: string; revenue: number; expense: number; profit: number }> = {};
+
+    filteredInvs.forEach((inv) => {
+      const amount = inv.amountPaid || 0;
+      totalRevenue += amount;
+
+      const courseTitle = inv.courseTitle || "Không có liên kết";
+      const courseId = inv.courseId || "unlinked";
+      if (!courseBreakdown[courseId]) {
+        courseBreakdown[courseId] = { title: courseTitle, count: 0, revenue: 0 };
+      }
+      courseBreakdown[courseId].count += 1;
+      courseBreakdown[courseId].revenue += amount;
+
+      const payDate = new Date(inv.paymentDate);
+      const monthKey = `${payDate.getFullYear()}-${String(payDate.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = `Tháng ${payDate.getMonth() + 1}/${payDate.getFullYear()}`;
+      if (!monthlyBreakdown[monthKey]) {
+        monthlyBreakdown[monthKey] = { label: monthLabel, revenue: 0, expense: 0, profit: 0 };
+      }
+      monthlyBreakdown[monthKey].revenue += amount;
+    });
+
+    filteredExps.forEach((exp) => {
+      const amount = exp.amount || 0;
+      const isRevenue = exp.type === "REVENUE";
+      
+      if (isRevenue) {
+        totalRevenue += amount;
+      } else {
+        totalExpense += amount;
+      }
+
+      if (!isRevenue) {
+        const cat = exp.category || "Khác";
+        if (!expenseCategoryBreakdown[cat]) {
+          expenseCategoryBreakdown[cat] = { category: cat, revenue: 0 };
+        }
+        expenseCategoryBreakdown[cat].revenue += amount;
+      }
+
+      const expDate = new Date(exp.date);
+      const monthKey = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = `Tháng ${expDate.getMonth() + 1}/${expDate.getFullYear()}`;
+      if (!monthlyBreakdown[monthKey]) {
+        monthlyBreakdown[monthKey] = { label: monthLabel, revenue: 0, expense: 0, profit: 0 };
+      }
+      
+      if (isRevenue) {
+        monthlyBreakdown[monthKey].revenue += amount;
+      } else {
+        monthlyBreakdown[monthKey].expense += amount;
+      }
+    });
+
+    Object.keys(monthlyBreakdown).forEach((monthKey) => {
+      monthlyBreakdown[monthKey].profit = monthlyBreakdown[monthKey].revenue - monthlyBreakdown[monthKey].expense;
+    });
+
+    const courses = Object.values(courseBreakdown).sort((a, b) => b.revenue - a.revenue);
+    const expenseCategories = Object.values(expenseCategoryBreakdown).sort((a, b) => b.revenue - a.revenue);
+    const months = Object.entries(monthlyBreakdown)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([key, value]) => ({ key, ...value }));
+
+    return {
+      filteredInvoicesList: filteredInvs,
+      filteredExpensesList: filteredExps,
+      filteredStats: {
+        totalRevenue,
+        totalExpense,
+        netProfit: totalRevenue - totalExpense,
+        totalInvoices: filteredInvs.length,
+        courses,
+        expenseCategories,
+        months
+      }
+    };
+  }, [invoices, expenses, filterMonth, filterYear]);
+
+  // Filters based on search term
+  const filteredInvoices = filteredInvoicesList.filter((inv) => {
+    const term = searchQuery.toLowerCase();
+    return (
+      inv.studentName.toLowerCase().includes(term) ||
+      (inv.studentCode && inv.studentCode.toLowerCase().includes(term)) ||
+      (inv.parentPhone && inv.parentPhone.includes(term)) ||
+      (inv.className && inv.className.toLowerCase().includes(term))
+    );
+  });
+
+  const filteredExpenses = filteredExpensesList.filter((exp) => {
+    const term = searchQuery.toLowerCase();
+    return (
+      exp.title.toLowerCase().includes(term) ||
+      exp.category.toLowerCase().includes(term) ||
+      (exp.description && exp.description.toLowerCase().includes(term))
+    );
+  });
+
+  // Scale value for monthly profit chart based on filtered data
+  const maxVal = filteredStats.months.reduce((max: number, m: any) => Math.max(max, m.revenue, m.expense), 0) || 1;
+
+  const totalExpenseSum = filteredStats.totalExpense || 0;
+  const totalRevenueSum = filteredStats.totalRevenue || 0;
+  const netProfitSum = filteredStats.netProfit || 0;
 
   const isAdmin = session?.user?.role === "ADMIN";
 
@@ -482,33 +836,6 @@ export default function CMSInvoicesPage() {
       </div>
     );
   }
-
-  // Filters
-  const filteredInvoices = invoices.filter((inv) => {
-    const term = searchQuery.toLowerCase();
-    return (
-      inv.studentName.toLowerCase().includes(term) ||
-      (inv.studentCode && inv.studentCode.toLowerCase().includes(term)) ||
-      (inv.parentPhone && inv.parentPhone.includes(term)) ||
-      (inv.className && inv.className.toLowerCase().includes(term))
-    );
-  });
-
-  const filteredExpenses = expenses.filter((exp) => {
-    const term = searchQuery.toLowerCase();
-    return (
-      exp.title.toLowerCase().includes(term) ||
-      exp.category.toLowerCase().includes(term) ||
-      (exp.description && exp.description.toLowerCase().includes(term))
-    );
-  });
-
-  // Scale value for monthly profit chart
-  const maxVal = stats.months.reduce((max: number, m: any) => Math.max(max, m.revenue, m.expense), 0) || 1;
-
-  const totalExpenseSum = stats.totalExpense || 0;
-  const totalRevenueSum = stats.totalRevenue || 0;
-  const netProfitSum = stats.netProfit || 0;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -537,6 +864,48 @@ export default function CMSInvoicesPage() {
           >
             <RefreshCcw className="w-4 h-4" />
             <span>Làm mới</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filters & Manage Row */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white border-4 border-black rounded-3xl p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+        <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto">
+          <span className="font-black text-xs text-black shrink-0 w-full sm:w-auto">📅 Lọc thời gian:</span>
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-1 sm:flex-initial">
+            <div className="flex-1 sm:w-36 sm:flex-initial">
+              <CustomSelect
+                value={filterYear}
+                onChange={val => setFilterYear(val)}
+                options={[
+                  { value: "ALL", label: "Tất cả các năm" },
+                  ...availableYears.map(y => ({ value: y, label: `Năm ${y}` }))
+                ]}
+                placeholder="Chọn năm..."
+              />
+            </div>
+            <div className="flex-1 sm:w-36 sm:flex-initial">
+              <CustomSelect
+                value={filterMonth}
+                onChange={val => setFilterMonth(val)}
+                options={[
+                  { value: "ALL", label: "Tất cả các tháng" },
+                  ...Array.from({ length: 12 }, (_, i) => ({
+                    value: (i + 1).toString(),
+                    label: `Tháng ${i + 1}`
+                  }))
+                ]}
+                placeholder="Chọn tháng..."
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowRecurringModal(true)}
+            className="bg-[#bae1ff] hover:bg-[#a6d3ff] text-black border-2 border-black font-black text-xs px-4 py-2.5 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none flex items-center gap-1.5 cursor-pointer"
+          >
+            ⚙️ Cấu hình thu/chi cố định
           </button>
         </div>
       </div>
@@ -600,42 +969,48 @@ export default function CMSInvoicesPage() {
             </span>
           </h3>
           
-          {stats.months.length === 0 ? (
+          {filteredStats.months.length === 0 ? (
             <div className="py-12 text-center text-gray-400 font-bold italic">Chưa có đủ dữ liệu thống kê tháng</div>
           ) : (
-            <div className="h-64 flex items-end gap-6 pt-6 px-4">
-              {stats.months.map((m: any) => {
-                const revHeight = Math.round((m.revenue / maxVal) * 100);
-                const expHeight = Math.round((m.expense / maxVal) * 100);
-                return (
-                  <div key={m.key} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end relative">
-                    {/* Tooltip on hover */}
-                    <div className="opacity-0 group-hover:opacity-100 bg-black text-white text-[10px] p-2.5 rounded-xl border-2 border-white absolute bottom-full mb-2 transition-opacity shadow-lg pointer-events-none z-10 w-44">
-                      <p className="font-black border-b border-white/20 pb-1 mb-1 text-center">{m.label}</p>
-                      <p className="text-[#a8e6cf]">✓ Thu: {m.revenue.toLocaleString("vi-VN")} đ</p>
-                      <p className="text-[#ffaaa6]">✗ Chi: {m.expense.toLocaleString("vi-VN")} đ</p>
-                      <p className={`font-black pt-1 border-t border-white/20 mt-1 ${m.profit >= 0 ? "text-[#ffd275]" : "text-rose-400"}`}>
-                        💵 {m.profit >= 0 ? "Lãi" : "Lỗ"}: {Math.abs(m.profit).toLocaleString("vi-VN")} đ
-                      </p>
+            <div className="overflow-x-auto pb-2">
+              <div 
+                style={{ minWidth: `${Math.max(450, filteredStats.months.length * 75)}px` }}
+                className="h-64 flex items-end gap-6 pt-2 px-4"
+              >
+                {filteredStats.months.map((m: any) => {
+                  // Limit max bar height to 55% to leave room for the tooltip at the top
+                  const revHeight = Math.round((m.revenue / maxVal) * 55);
+                  const expHeight = Math.round((m.expense / maxVal) * 55);
+                  return (
+                    <div key={m.key} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end relative">
+                      {/* Tooltip on hover - positioned at the top of the container to prevent clipping */}
+                      <div className="opacity-0 group-hover:opacity-100 bg-black text-white text-[10px] p-2 rounded-xl border-2 border-white absolute top-0 left-1/2 -translate-x-1/2 transition-opacity shadow-lg pointer-events-none z-20 w-40">
+                        <p className="font-black border-b border-white/20 pb-0.5 mb-1 text-center text-[9px]">{m.label}</p>
+                        <p className="text-[#a8e6cf]">✓ Thu: {m.revenue.toLocaleString("vi-VN")} đ</p>
+                        <p className="text-[#ffaaa6]">✗ Chi: {m.expense.toLocaleString("vi-VN")} đ</p>
+                        <p className={`font-black pt-0.5 border-t border-white/20 mt-1 text-[9px] ${m.profit >= 0 ? "text-[#ffd275]" : "text-rose-400"}`}>
+                          💵 {m.profit >= 0 ? "Lãi" : "Lỗ"}: {Math.abs(m.profit).toLocaleString("vi-VN")} đ
+                        </p>
+                      </div>
+                      {/* The Bars Side by Side */}
+                      <div className="flex items-end gap-1.5 w-full h-full justify-center">
+                        {/* Revenue Bar */}
+                        <div
+                          style={{ height: `${Math.max(5, revHeight)}%` }}
+                          className="w-4 bg-[#ffd275] border-2 border-black rounded-t shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-all group-hover:-translate-y-0.5"
+                        />
+                        {/* Expense Bar */}
+                        <div
+                          style={{ height: `${Math.max(5, expHeight)}%` }}
+                          className="w-4 bg-[#ffaaa6] border-2 border-black rounded-t shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-all group-hover:-translate-y-0.5"
+                        />
+                      </div>
+                      {/* Label */}
+                      <span className="text-[9px] font-black text-gray-500 whitespace-nowrap">{m.label}</span>
                     </div>
-                    {/* The Bars Side by Side */}
-                    <div className="flex items-end gap-1.5 w-full h-full justify-center">
-                      {/* Revenue Bar */}
-                      <div
-                        style={{ height: `${Math.max(5, revHeight)}%` }}
-                        className="w-4 bg-[#ffd275] border-2 border-black rounded-t shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-all group-hover:-translate-y-0.5"
-                      />
-                      {/* Expense Bar */}
-                      <div
-                        style={{ height: `${Math.max(5, expHeight)}%` }}
-                        className="w-4 bg-[#ffaaa6] border-2 border-black rounded-t shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-all group-hover:-translate-y-0.5"
-                      />
-                    </div>
-                    {/* Label */}
-                    <span className="text-[9px] font-black text-gray-500 whitespace-nowrap">{m.label}</span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -646,11 +1021,11 @@ export default function CMSInvoicesPage() {
             <PieChart className="w-5 h-5 text-rose-600" /> Cơ cấu phân bổ chi phí
           </h3>
           
-          {stats.expenseCategories.length === 0 ? (
+          {filteredStats.expenseCategories.length === 0 ? (
             <div className="py-12 text-center text-gray-400 font-bold italic">Chưa ghi nhận chi phí nào</div>
           ) : (
             <div className="space-y-4 pr-1 max-h-64 overflow-y-auto">
-              {stats.expenseCategories.map((c: any, idx: number) => {
+              {filteredStats.expenseCategories.map((c: any, idx: number) => {
                 const sharePercentage = totalExpenseSum > 0 ? Math.round((c.revenue / totalExpenseSum) * 100) : 0;
                 const colors = ["bg-[#ffaaa6]", "bg-[#ffd275]", "bg-[#bae1ff]", "bg-[#ffc6ff]", "bg-[#baffc9]", "bg-gray-300"];
                 const color = colors[idx % colors.length];
@@ -823,8 +1198,8 @@ export default function CMSInvoicesPage() {
       {activeTab === "EXPENSE" && (
         <div className="border-4 border-black bg-white rounded-3xl p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4">
-              <h3 className="text-xl font-black text-black flex items-center gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h3 className="text-xl font-black text-black flex items-center gap-2 mr-2">
                 💸 Nhật ký chi tiêu thực tế ({filteredExpenses.length})
               </h3>
               <button
@@ -834,13 +1209,19 @@ export default function CMSInvoicesPage() {
                 <Plus className="w-4 h-4 stroke-[3]" />
                 Nhập chi tiêu mới
               </button>
+              <button
+                onClick={() => setShowCategoryModal(true)}
+                className="bg-[#bae1ff] hover:bg-[#a2d4fc] text-black border-3 border-black font-black text-xs px-4 py-2.5 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer flex items-center gap-1.5"
+              >
+                🏷️ Quản lý danh mục
+              </button>
             </div>
             
             {/* Search box */}
             <div className="relative max-w-sm w-full">
               <input
                 type="text"
-                placeholder="Tìm theo nội dung, loại chi tiêu..."
+                placeholder="Tìm theo nội dung, danh mục..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full border-3 border-black rounded-xl p-2.5 pl-9 bg-white text-xs font-bold focus:outline-none shadow-[2px_2px_0px_rgba(0,0,0,0.15)] placeholder-gray-400"
@@ -859,7 +1240,7 @@ export default function CMSInvoicesPage() {
                 <thead>
                   <tr className="border-b-4 border-black">
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Nội dung khoản chi</th>
-                    <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Loại chi phí</th>
+                    <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Danh mục</th>
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Số tiền nộp</th>
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Ngày chi</th>
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Hóa đơn</th>
@@ -878,7 +1259,25 @@ export default function CMSInvoicesPage() {
                       "Họa cụ": "bg-[#ffaaa6]/20 text-[#d85c5c] border-[#ffaaa6]",
                       "Khác": "bg-gray-100 text-gray-700 border-gray-300"
                     };
-                    const badgeClass = catColors[exp.category] || "bg-gray-100 text-gray-700 border-gray-300";
+                    const getBadgeClass = (catName: string) => {
+                      if (catColors[catName]) return catColors[catName];
+                      const classes = [
+                        "bg-amber-100 text-amber-800 border-amber-300",
+                        "bg-sky-100 text-sky-800 border-sky-300",
+                        "bg-purple-100 text-purple-800 border-purple-300",
+                        "bg-emerald-100 text-emerald-800 border-emerald-300",
+                        "bg-[#ffaaa6]/20 text-[#d85c5c] border-[#ffaaa6]",
+                        "bg-blue-100 text-blue-800 border-blue-300",
+                        "bg-teal-100 text-teal-800 border-teal-300"
+                      ];
+                      let hash = 0;
+                      for (let i = 0; i < catName.length; i++) {
+                        hash = catName.charCodeAt(i) + ((hash << 5) - hash);
+                      }
+                      const index = Math.abs(hash) % classes.length;
+                      return classes[index];
+                    };
+                    const badgeClass = getBadgeClass(exp.category || "Khác");
 
                     return (
                       <tr key={exp.id} className="border-b-2 border-gray-200 hover:bg-[#fff9ed] transition-colors">
@@ -892,7 +1291,7 @@ export default function CMSInvoicesPage() {
                         </td>
                         <td className="py-4 px-4 text-xs font-bold">
                           <span className={`border px-2 py-0.5 rounded font-black text-[10px] uppercase whitespace-nowrap ${badgeClass}`}>
-                            {exp.category}
+                            {exp.category || "Khác"}
                           </span>
                         </td>
                         <td className="py-4 px-4 font-black text-rose-700 text-sm">
@@ -976,9 +1375,9 @@ export default function CMSInvoicesPage() {
             </button>
 
             <h3 className="text-2xl font-black text-black mb-1 flex items-center gap-2">
-              {selectedExpense ? "✏️ Sửa Khoản Chi Tiêu" : "💸 Nhập Chi Tiêu Mới"}
+              {selectedExpense ? "✏️ Sửa Giao Dịch" : "💸 Ghi Giao Dịch Mới"}
             </h3>
-            <p className="text-gray-500 text-sm mb-6">Điền đầy đủ thông tin để ghi nhận các khoản chi của trung tâm.</p>
+            <p className="text-gray-500 text-sm mb-6">Điền đầy đủ thông tin để ghi nhận khoản thu hoặc chi của trung tâm.</p>
 
             {expenseError && (
               <div className="bg-rose-50 border-2 border-rose-400 text-rose-700 rounded-xl p-3 mb-4 font-bold text-sm">
@@ -988,11 +1387,35 @@ export default function CMSInvoicesPage() {
 
             <form onSubmit={handleSaveExpense} className="space-y-4">
               <div>
-                <label className="block text-xs font-black text-gray-800 mb-1">Tên khoản chi *</label>
+                <label className="block text-xs font-black text-gray-800 mb-1">Loại giao dịch *</label>
+                <div className="flex border-3 border-black rounded-xl overflow-hidden font-black text-xs bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                  <button
+                    type="button"
+                    onClick={() => setExpenseForm({ ...expenseForm, type: "EXPENSE" })}
+                    className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
+                      expenseForm.type === "EXPENSE" ? "bg-[#ffaaa6] text-black border-r-3 border-black" : "bg-white text-gray-500 border-r-3 border-black hover:bg-stone-50"
+                    }`}
+                  >
+                    Chi tiêu thực tế ✗
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpenseForm({ ...expenseForm, type: "REVENUE" })}
+                    className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
+                      expenseForm.type === "REVENUE" ? "bg-[#a8e6cf] text-black" : "bg-white text-gray-500 hover:bg-stone-50"
+                    }`}
+                  >
+                    Thu nhập khác ✓
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Tên giao dịch *</label>
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: Tiền thuê nhà Tháng 7"
+                  placeholder={expenseForm.type === "REVENUE" ? "Ví dụ: Tài trợ từ đối tác" : "Ví dụ: Tiền mạng tháng 7"}
                   className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
                   value={expenseForm.title}
                   onChange={e => setExpenseForm({ ...expenseForm, title: e.target.value })}
@@ -1001,24 +1424,17 @@ export default function CMSInvoicesPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-black text-gray-800 mb-1">Loại chi phí *</label>
-                  <select
-                    required
-                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs h-[42px]"
-                    value={expenseForm.category}
-                    onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                  >
-                    <option value="Vận hành">Vận hành</option>
-                    <option value="Mặt bằng">Mặt bằng</option>
-                    <option value="Lương">Lương nhân sự</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Họa cụ">Họa cụ / Thiết bị</option>
-                    <option value="Khác">Phần chi khác</option>
-                  </select>
+                  <label className="block text-xs font-black text-gray-800 mb-1">Danh mục *</label>
+                  <CustomSelect
+                    value={expenseForm.categoryId}
+                    onChange={val => setExpenseForm({ ...expenseForm, categoryId: val })}
+                    options={categories.map(c => ({ value: c.id, label: c.name }))}
+                    placeholder="Chọn danh mục..."
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-800 mb-1">Ngày chi *</label>
+                  <label className="block text-xs font-black text-gray-800 mb-1">Ngày giao dịch *</label>
                   <input
                     type="date"
                     required
@@ -1030,11 +1446,11 @@ export default function CMSInvoicesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-black text-gray-800 mb-1">Số tiền chi (VNĐ) *</label>
+                <label className="block text-xs font-black text-gray-800 mb-1">Số tiền (VNĐ) *</label>
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: 12.000.000"
+                  placeholder="Ví dụ: 500.000"
                   className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-sm"
                   value={expenseForm.amount ? Number(expenseForm.amount).toLocaleString("vi-VN") : ""}
                   onChange={e => {
@@ -1160,6 +1576,76 @@ export default function CMSInvoicesPage() {
         </div>
       )}
 
+      {/* MODAL: MANAGE EXPENSE CATEGORIES */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white border-4 border-black rounded-[30px_10px_25px_10px/10px_25px_10px_30px] max-w-md w-full p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative my-8 animate-in zoom-in-95 duration-200">
+            <button
+              type="button"
+              onClick={() => setShowCategoryModal(false)}
+              className="absolute top-4 right-4 bg-[#ffaaa6] hover:bg-[#ff8b94] border-2 border-black rounded-full p-1.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer z-10"
+            >
+              <X className="w-5 h-5 text-black" />
+            </button>
+
+            <h3 className="text-2xl font-black text-black mb-1 flex items-center gap-2">
+              🏷️ Quản lý Danh mục Chi phí
+            </h3>
+            <p className="text-gray-500 text-sm mb-6">Thêm mới hoặc xóa các danh mục phân loại chi phí của trung tâm.</p>
+
+            <form onSubmit={handleCreateCategory} className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Tên danh mục mới *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ví dụ: Quảng cáo, Liên hoan..."
+                    className="flex-1 border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                    value={newCategoryName}
+                    onChange={e => setNewCategoryName(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    disabled={addingCategory}
+                    className="bg-[#a8e6cf] hover:bg-[#8fd4ba] disabled:bg-gray-200 border-3 border-black rounded-xl px-4 py-2 font-black text-black text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer flex items-center gap-1 shrink-0"
+                  >
+                    {addingCategory ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Thêm"}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <div className="border-t-2 border-black pt-4">
+              <label className="block text-xs font-black text-gray-800 mb-2">Danh sách hiện tại</label>
+              {loadingCategories && categories.length === 0 ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+                </div>
+              ) : categories.length === 0 ? (
+                <p className="text-xs text-gray-400 font-bold italic text-center py-4">Chưa có danh mục nào.</p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {categories.map((c) => (
+                    <div key={c.id} className="flex justify-between items-center border-2 border-black rounded-xl p-2.5 bg-gray-50 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                      <span className="text-xs font-bold text-gray-900">{c.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(c.id, c.name)}
+                        className="p-1.5 bg-rose-100 hover:bg-rose-200 border-2 border-black rounded-lg text-rose-700 transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                        title="Xóa danh mục"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* NOTIFICATION MODAL */}
       <NotificationModal
         isOpen={notification.isOpen}
@@ -1191,6 +1677,258 @@ export default function CMSInvoicesPage() {
                 Mở trong tab mới ↗
               </a>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: MANAGE RECURRING FIXED TRANSACTIONS */}
+      {showRecurringModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white border-4 border-black rounded-[30px_10px_25px_10px/10px_25px_10px_30px] max-w-2xl w-full p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative my-8 animate-in zoom-in-95 duration-200">
+            <button
+              type="button"
+              onClick={() => setShowRecurringModal(false)}
+              className="absolute top-4 right-4 bg-[#ffaaa6] hover:bg-[#ff8b94] border-2 border-black rounded-full p-1.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer z-10"
+            >
+              <X className="w-5 h-5 text-black" />
+            </button>
+
+            <h3 className="text-2xl font-black text-black mb-1 flex items-center gap-2">
+              ⚙️ Cấu hình thu/chi cố định định kỳ
+            </h3>
+            <p className="text-gray-500 text-xs mb-6">
+              Thiết lập các khoản thu/chi cố định phát sinh hàng tháng (ví dụ: tiền thuê nhà ngày 5, tiền mạng ngày 10).
+              Hệ thống sẽ tự động ghi nhận giao dịch khi tới ngày đã cấu hình.
+            </p>
+
+            <div className="mb-4 flex justify-between items-center">
+              <button
+                type="button"
+                onClick={handleOpenAddRecurring}
+                className="bg-[#a8e6cf] hover:bg-[#8fd4ba] text-black border-2 border-black font-black text-xs px-3.5 py-2.5 rounded-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" /> Thêm cấu hình định kỳ
+              </button>
+            </div>
+
+            <div className="border-t-2 border-black pt-4">
+              {loadingRecurring && recurringTemplates.length === 0 ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                </div>
+              ) : recurringTemplates.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl">
+                  <p className="text-xs text-gray-400 font-bold italic">Chưa có cấu hình thu/chi cố định nào.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                  {recurringTemplates.map((tpl) => (
+                    <div
+                      key={tpl.id}
+                      className="border-2 border-black rounded-xl p-4 bg-gray-50 flex items-center justify-between shadow-[2px_2px_0px_rgba(0,0,0,1)] gap-4"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-black text-gray-900">{tpl.title}</span>
+                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 border rounded ${
+                            tpl.type === "REVENUE" 
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                              : "bg-rose-100 text-rose-800 border-rose-300"
+                          }`}>
+                            {tpl.type === "REVENUE" ? "Thu nhập" : "Chi tiêu"}
+                          </span>
+                          <span className="text-[10px] bg-stone-100 border border-black rounded px-1.5 py-0.5 font-extrabold text-stone-600">
+                            Ngày {tpl.dayOfMonth} hàng tháng
+                          </span>
+                          {!tpl.isActive && (
+                            <span className="text-[9px] bg-gray-200 border border-gray-300 text-gray-400 font-black px-1.5 py-0.5 rounded uppercase">
+                              Tạm dừng
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-bold text-rose-700">
+                          {tpl.type === "REVENUE" ? "+" : "-"} {tpl.amount.toLocaleString("vi-VN")} đ
+                          {tpl.category?.name && (
+                            <span className="text-[10px] text-gray-400 font-black ml-2 uppercase">
+                              📁 {tpl.category.name}
+                            </span>
+                          )}
+                        </p>
+                        {tpl.description && (
+                          <p className="text-[10px] text-gray-400 font-bold">{tpl.description}</p>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditRecurring(tpl)}
+                          className="p-2 bg-amber-100 hover:bg-amber-200 border-2 border-black rounded-lg text-black transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                          title="Sửa cấu hình"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRecurring(tpl.id, tpl.title)}
+                          className="p-2 bg-rose-100 hover:bg-rose-200 border-2 border-black rounded-lg text-rose-700 transition-all shadow-[1.5px_1.5px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
+                          title="Xóa cấu hình"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD / EDIT RECURRING TRANSACTION CONFIG */}
+      {showAddEditRecurringModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] overflow-y-auto">
+          <div className="bg-white border-4 border-black rounded-[35px_15px_30px_10px/10px_30px_15px_35px] max-w-md w-full p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] relative my-8 animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowAddEditRecurringModal(false)}
+              className="absolute top-4 right-4 bg-[#ffaaa6] hover:bg-[#ff8b94] border-2 border-black rounded-full p-1.5 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer z-10"
+            >
+              <X className="w-5 h-5 text-black" />
+            </button>
+
+            <h3 className="text-2xl font-black text-black mb-1 flex items-center gap-2">
+              {selectedRecurring ? "⚙️ Sửa Cấu Hình Định Kỳ" : "⚙️ Thêm Cấu Hình Định Kỳ"}
+            </h3>
+            <p className="text-gray-500 text-sm mb-6">Thiết lập các thông tin để tự động sinh giao dịch hàng tháng.</p>
+
+            {recurringError && (
+              <div className="bg-rose-50 border-2 border-rose-400 text-rose-700 rounded-xl p-3 mb-4 font-bold text-sm">
+                ⚠️ {recurringError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveRecurring} className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Loại giao dịch *</label>
+                <div className="flex border-3 border-black rounded-xl overflow-hidden font-black text-xs bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                  <button
+                    type="button"
+                    onClick={() => setRecurringForm({ ...recurringForm, type: "EXPENSE" })}
+                    className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
+                      recurringForm.type === "EXPENSE" ? "bg-[#ffaaa6] text-black border-r-3 border-black" : "bg-white text-gray-500 border-r-3 border-black hover:bg-stone-50"
+                    }`}
+                  >
+                    Chi tiêu cố định ✗
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecurringForm({ ...recurringForm, type: "REVENUE" })}
+                    className={`flex-1 py-2 text-center transition-colors cursor-pointer ${
+                      recurringForm.type === "REVENUE" ? "bg-[#a8e6cf] text-black" : "bg-white text-gray-500 hover:bg-stone-50"
+                    }`}
+                  >
+                    Doanh thu cố định ✓
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Tên cấu hình *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Tiền mạng internet, Tiền mặt bằng..."
+                  className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                  value={recurringForm.title}
+                  onChange={e => setRecurringForm({ ...recurringForm, title: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-800 mb-1">Danh mục *</label>
+                  <CustomSelect
+                    value={recurringForm.categoryId}
+                    onChange={val => setRecurringForm({ ...recurringForm, categoryId: val })}
+                    options={categories.map(c => ({ value: c.id, label: c.name }))}
+                    placeholder="Chọn danh mục..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-800 mb-1">Ngày tự động tạo (1-31) *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    required
+                    className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                    value={recurringForm.dayOfMonth}
+                    onChange={e => setRecurringForm({ ...recurringForm, dayOfMonth: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Số tiền (VNĐ) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: 350.000"
+                  className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-sm"
+                  value={recurringForm.amount ? Number(recurringForm.amount).toLocaleString("vi-VN") : ""}
+                  onChange={e => {
+                    const rawValue = e.target.value.replace(/\./g, "").replace(/[^0-9]/g, "");
+                    setRecurringForm({ ...recurringForm, amount: rawValue });
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Mô tả chi tiết</label>
+                <textarea
+                  rows={2}
+                  placeholder="Ghi chú chi tiết về khoản thu chi này..."
+                  className="w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs resize-none"
+                  value={recurringForm.description}
+                  onChange={e => setRecurringForm({ ...recurringForm, description: e.target.value })}
+                />
+              </div>
+
+              <div className="py-1">
+                <CustomCheckbox
+                  id="recurring-active"
+                  checked={recurringForm.isActive}
+                  onChange={checked => setRecurringForm({ ...recurringForm, isActive: checked })}
+                  label="Kích hoạt tự động tạo hàng tháng"
+                />
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-black/15">
+                <button
+                  type="button"
+                  onClick={() => setShowAddEditRecurringModal(false)}
+                  className="bg-white hover:bg-gray-50 border-3 border-black rounded-xl px-5 py-3 font-bold shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer text-xs"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingRecurring}
+                  className="bg-[#a8e6cf] hover:bg-[#8fd4ba] disabled:bg-gray-200 border-3 border-black rounded-xl px-5 py-3 font-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  {submittingRecurring ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    "Lưu lại"
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

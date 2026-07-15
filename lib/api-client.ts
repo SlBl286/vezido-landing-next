@@ -363,6 +363,29 @@ export const cmsApi = {
     delete: (id: string) => fetchJson<{ message: string }>(`/api/cms/expenses?id=${id}`, {
       method: "DELETE",
     }),
+    listCategories: () => fetchJson<{ categories: any[] }>("/api/cms/expenses/categories"),
+    createCategory: (data: { name: string }) => fetchJson<{ category: any }>("/api/cms/expenses/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    deleteCategory: (id: string) => fetchJson<{ message: string }>(`/api/cms/expenses/categories?id=${id}`, {
+      method: "DELETE",
+    }),
+    listRecurring: () => fetchJson<{ templates: any[] }>("/api/cms/expenses/recurring"),
+    createRecurring: (data: any) => fetchJson<{ template: any }>("/api/cms/expenses/recurring", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    updateRecurring: (id: string, data: any) => fetchJson<{ template: any }>(`/api/cms/expenses/recurring?id=${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+    deleteRecurring: (id: string) => fetchJson<{ message: string }>(`/api/cms/expenses/recurring?id=${id}`, {
+      method: "DELETE",
+    }),
   },
   settings: {
     get: () => fetchJson<{ settings: Record<string, string> }>("/api/cms/settings"),

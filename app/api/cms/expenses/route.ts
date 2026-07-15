@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { saveBase64File } from "@/lib/image-upload";
+import { checkAndGenerateRecurring } from "./recurring/helper";
 
 export async function GET() {
   const session = await auth();
@@ -10,7 +11,13 @@ export async function GET() {
   }
 
   try {
+    // Auto-generate recurring transactions
+    await checkAndGenerateRecurring();
+
     const expenses = await prisma.expense.findMany({
+      include: {
+        category: true
+      },
       orderBy: { date: "desc" }
     });
     return NextResponse.json({ expenses });
@@ -28,10 +35,26 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { title, amount, category, date, description, invoices } = body;
+    const { title, amount, categoryId, category, date, description, invoices, type } = body;
 
-    if (!title || !title.trim() || amount === undefined || !category) {
+    if (!title || !title.trim() || amount === undefined || (!categoryId && !category)) {
       return NextResponse.json({ error: "Vui lòng điền đầy đủ các trường bắt buộc" }, { status: 400 });
+    }
+
+    // Resolve categoryId with fallback to category name lookup/creation
+    let finalCategoryId = categoryId;
+    if (!finalCategoryId && category) {
+      const matched = await prisma.expenseCategory.findFirst({
+        where: { name: { equals: category.trim(), mode: "insensitive" } }
+      });
+      if (matched) {
+        finalCategoryId = matched.id;
+      } else {
+        const newCat = await prisma.expenseCategory.create({
+          data: { name: category.trim() }
+        });
+        finalCategoryId = newCat.id;
+      }
     }
 
     // Save invoices if provided
@@ -56,10 +79,14 @@ export async function POST(req: Request) {
       data: {
         title: title.trim(),
         amount: Number(amount),
-        category: category.trim(),
+        type: type || "EXPENSE",
+        categoryId: finalCategoryId,
         date: date ? new Date(date) : new Date(),
         description: description?.trim() || null,
         invoices: savedInvoices
+      },
+      include: {
+        category: true
       }
     });
 
@@ -85,10 +112,26 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { title, amount, category, date, description, invoices } = body;
+    const { title, amount, categoryId, category, date, description, invoices, type } = body;
 
-    if (!title || !title.trim() || amount === undefined || !category) {
+    if (!title || !title.trim() || amount === undefined || (!categoryId && !category)) {
       return NextResponse.json({ error: "Vui lòng điền đầy đủ các trường bắt buộc" }, { status: 400 });
+    }
+
+    // Resolve categoryId with fallback to category name lookup/creation
+    let finalCategoryId = categoryId;
+    if (!finalCategoryId && category) {
+      const matched = await prisma.expenseCategory.findFirst({
+        where: { name: { equals: category.trim(), mode: "insensitive" } }
+      });
+      if (matched) {
+        finalCategoryId = matched.id;
+      } else {
+        const newCat = await prisma.expenseCategory.create({
+          data: { name: category.trim() }
+        });
+        finalCategoryId = newCat.id;
+      }
     }
 
     // Save invoices if provided
@@ -114,10 +157,14 @@ export async function PUT(req: Request) {
       data: {
         title: title.trim(),
         amount: Number(amount),
-        category: category.trim(),
+        type: type || "EXPENSE",
+        categoryId: finalCategoryId,
         date: date ? new Date(date) : new Date(),
         description: description?.trim() || null,
         invoices: savedInvoices
+      },
+      include: {
+        category: true
       }
     });
 
