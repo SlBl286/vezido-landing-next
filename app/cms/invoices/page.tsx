@@ -482,12 +482,19 @@ export default function CMSInvoicesPage() {
         // Write label cell
         worksheet[`${labelCol}${totalRowNum}`] = { t: 's', v: label };
 
-        // Write SUM formula cells
+        // Write SUM formula cells — compute ACTUAL sum from worksheet cells as cached value
         numericCols.forEach(col => {
+          let actualSum = 0;
+          for (let r = 2; r <= totalRowNum - 1; r++) {
+            const cell = worksheet[`${col}${r}`];
+            if (cell && typeof cell.v === 'number') {
+              actualSum += cell.v;
+            }
+          }
           worksheet[`${col}${totalRowNum}`] = {
             t: 'n',
             f: `SUM(${col}2:${col}${totalRowNum - 1})`,
-            v: 0,
+            v: actualSum,
             z: '#,##0" đ"'
           };
         });
@@ -563,7 +570,38 @@ export default function CMSInvoicesPage() {
         reportTitle = "BÁO CÁO TÀI CHÍNH TỔNG HỢP - TOÀN BỘ THỜI GIAN";
       }
 
-      // 3. Create Summary Data
+      // 3. Calculate actual values for Sheet 1 (Summary)
+      let tuitionRevenue = 0;
+      let transferRevenue = 0;
+      let cashRevenue = 0;
+      let onlineRevenue = 0;
+
+      filteredInvoicesList.forEach(inv => {
+        const amt = inv.amountPaid || 0;
+        tuitionRevenue += amt;
+        if (inv.paymentMethod === "TRANSFER") {
+          transferRevenue += amt;
+        } else if (inv.paymentMethod === "CASH") {
+          cashRevenue += amt;
+        } else {
+          onlineRevenue += amt;
+        }
+      });
+
+      let otherRevenue = 0;
+      let actualExpense = 0;
+
+      filteredExpensesList.forEach(exp => {
+        const amt = exp.amount || 0;
+        if (exp.type === "REVENUE") {
+          otherRevenue += amt;
+        } else {
+          actualExpense += amt;
+        }
+      });
+
+      const netProfitVal = tuitionRevenue + otherRevenue - actualExpense;
+
       // Column mapping in "Doanh thu học phí" sheet:
       // A=Ngày thanh toán, B=Mã HĐ, C=Mã HS, D=Tên HS, E=Phụ huynh, F=SDT
       // G=Lớp học, H=Khóa học, I=Tiền gốc, J=Giảm giá %, K=Tiền đóng TT, L=Phương thức, M=Mã ưu đãi
@@ -572,16 +610,16 @@ export default function CMSInvoicesPage() {
         [`Ngày xuất báo cáo: ${new Date().toLocaleString("vi-VN")}`],
         [],
         ["Chỉ tiêu", "Giá trị (VNĐ)", "Mô tả"],
-        ["Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!K2:K${revLen})`, v: 0 }, "Tổng số tiền học phí thực tế đã thu nhận"],
-        ["Doanh Thu Khác", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Thu nhập khác", 'Nhật ký thu chi'!D2:D${expLen})`, v: 0 }, "Các khoản thu nhập khác ngoài học phí"],
-        ["Tổng Chi Tiêu Thực Tế", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Chi tiêu thực tế", 'Nhật ký thu chi'!D2:D${expLen})`, v: 0 }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
-        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5+B6-B7", v: 0 }, "Hiệu số giữa Doanh thu và Chi phí"],
+        ["Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!K2:K${revLen})`, v: tuitionRevenue }, "Tổng số tiền học phí thực tế đã thu nhận"],
+        ["Doanh Thu Khác", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Thu nhập khác", 'Nhật ký thu chi'!D2:D${expLen})`, v: otherRevenue }, "Các khoản thu nhập khác ngoài học phí"],
+        ["Tổng Chi Tiêu Thực Tế", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Chi tiêu thực tế", 'Nhật ký thu chi'!D2:D${expLen})`, v: actualExpense }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
+        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5+B6-B7", v: netProfitVal }, "Hiệu số giữa Doanh thu và Chi phí"],
         [],
         ["Cơ cấu doanh thu theo phương thức thanh toán:"],
         ["Phương thức", "Số tiền (VNĐ)"],
-        ["Chuyển khoản", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Chuyển khoản", 'Doanh thu học phí'!K2:K${revLen})`, v: 0 }],
-        ["Tiền mặt", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Tiền mặt", 'Doanh thu học phí'!K2:K${revLen})`, v: 0 }],
-        ["Trực tuyến", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Trực tuyến", 'Doanh thu học phí'!K2:K${revLen})`, v: 0 }],
+        ["Chuyển khoản", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Chuyển khoản", 'Doanh thu học phí'!K2:K${revLen})`, v: transferRevenue }],
+        ["Tiền mặt", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Tiền mặt", 'Doanh thu học phí'!K2:K${revLen})`, v: cashRevenue }],
+        ["Trực tuyến", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Trực tuyến", 'Doanh thu học phí'!K2:K${revLen})`, v: onlineRevenue }],
       ];
 
       // 4. Create Workbook & Sheets
@@ -821,12 +859,21 @@ export default function CMSInvoicesPage() {
         : XLSX.utils.json_to_sheet(payrollDataRows);
 
       // Inject Excel formulas for Tổng lương (H) and Thực nhận (J)
-      // H = C*D + E + F - G  (Số buổi * Đơn giá + Phụ cấp + Thưởng - Phạt)
-      // J = H - I
-      payrollDataRows.forEach((_, idx) => {
-        const row = idx + 2; // row 1 = header
-        worksheetPayroll[`H${row}`] = { t: "n", f: `C${row}*D${row}+E${row}+F${row}-G${row}`, v: 0, z: '#,##0" đ"' };
-        worksheetPayroll[`J${row}`] = { t: "n", f: `H${row}-I${row}`, v: 0, z: '#,##0" đ"' };
+      // H = Số buổi * Đơn giá + Phụ cấp + Thưởng - Phạt
+      // J = H - Đã ứng
+      payrollTeachers.forEach((t, idx) => {
+        const row = idx + 2;
+        const sessionCount = t.sessionCount || 0;
+        const rate = t.ratePerSession || 0;
+        const allowance = t.monthlyAllowance || 0;
+        const bonus = t.payroll?.bonus || 0;
+        const penalty = t.payroll?.penalty || 0;
+        const advance = t.payroll?.advance || 0;
+        const totalSalary = sessionCount * rate + allowance + bonus - penalty;
+        const netSalary = Math.max(0, totalSalary - advance);
+
+        worksheetPayroll[`H${row}`] = { t: "n", f: `C${row}*D${row}+E${row}+F${row}-G${row}`, v: totalSalary, z: '#,##0" đ"' };
+        worksheetPayroll[`J${row}`] = { t: "n", f: `H${row}-I${row}`, v: netSalary, z: '#,##0" đ"' };
       });
 
       // Format currency columns: D, E, F, G, H, I, J
@@ -854,14 +901,45 @@ export default function CMSInvoicesPage() {
           right: { style: "thin", color: { rgb: "000000" } }
         };
 
+        // Calculate actual values for the summary formulas
+        let gvSalarySum = 0;
+        let tgSalarySum = 0;
+        let hcSalarySum = 0;
+        let allowanceSum = 0;
+        let bonusSum = 0;
+        let penaltySum = 0;
+        let totalSalarySum = 0;
+
+        payrollTeachers.forEach(t => {
+          const sessionCount = t.sessionCount || 0;
+          const rate = t.ratePerSession || 0;
+          const allowance = t.monthlyAllowance || 0;
+          const bonus = t.payroll?.bonus || 0;
+          const penalty = t.payroll?.penalty || 0;
+          const totalSalary = sessionCount * rate + allowance + bonus - penalty;
+
+          if (t.role === "TEACHER") {
+            gvSalarySum += totalSalary;
+          } else if (t.role === "ASSISTANT") {
+            tgSalarySum += totalSalary;
+          } else {
+            hcSalarySum += totalSalary;
+          }
+
+          allowanceSum += allowance;
+          bonusSum += bonus;
+          penaltySum += penalty;
+          totalSalarySum += totalSalary;
+        });
+
         const summaryItems = [
-          { label: "Tổng lương giáo viên", formula: `SUMIF(B2:B${totalRow - 1},"Giáo viên",H2:H${totalRow - 1})`, fill: "E8F5E9" },
-          { label: "Tổng lương trợ giảng", formula: `SUMIF(B2:B${totalRow - 1},"Trợ giảng",H2:H${totalRow - 1})`, fill: "E8F5E9" },
-          { label: "Tổng lương hành chính", formula: `SUMIF(B2:B${totalRow - 1},"Hành chính",H2:H${totalRow - 1})`, fill: "E8F5E9" },
-          { label: "Tổng phụ cấp", formula: `SUM(E2:E${totalRow - 1})`, fill: "FFF9ED" },
-          { label: "Tổng thưởng", formula: `SUM(F2:F${totalRow - 1})`, fill: "FFF9ED" },
-          { label: "Tổng khấu trừ (phạt)", formula: `SUM(G2:G${totalRow - 1})`, fill: "FFEBEE" },
-          { label: "Tổng chi phí lương", formula: `SUM(H2:H${totalRow - 1})`, fill: "FFD275", bold: true },
+          { label: "Tổng lương giáo viên", formula: `SUMIF(B2:B${totalRow - 1},"Giáo viên",H2:H${totalRow - 1})`, value: gvSalarySum, fill: "E8F5E9" },
+          { label: "Tổng lương trợ giảng", formula: `SUMIF(B2:B${totalRow - 1},"Trợ giảng",H2:H${totalRow - 1})`, value: tgSalarySum, fill: "E8F5E9" },
+          { label: "Tổng lương hành chính", formula: `SUMIF(B2:B${totalRow - 1},"Hành chính",H2:H${totalRow - 1})`, value: hcSalarySum, fill: "E8F5E9" },
+          { label: "Tổng phụ cấp", formula: `SUM(E2:E${totalRow - 1})`, value: allowanceSum, fill: "FFF9ED" },
+          { label: "Tổng thưởng", formula: `SUM(F2:F${totalRow - 1})`, value: bonusSum, fill: "FFF9ED" },
+          { label: "Tổng khấu trừ (phạt)", formula: `SUM(G2:G${totalRow - 1})`, value: penaltySum, fill: "FFEBEE" },
+          { label: "Tổng chi phí lương", formula: `SUM(H2:H${totalRow - 1})`, value: totalSalarySum, fill: "FFD275", bold: true },
         ];
 
         summaryItems.forEach((item, i) => {
@@ -878,7 +956,7 @@ export default function CMSInvoicesPage() {
           };
           // Value formula in B
           worksheetPayroll[`B${r}`] = {
-            t: "n", f: item.formula, v: 0, z: '#,##0" đ"',
+            t: "n", f: item.formula, v: item.value, z: '#,##0" đ"',
             s: {
               font: { name: "Segoe UI", sz: 11, bold: !!item.bold, color: { rgb: "000000" } },
               fill: { fgColor: { rgb: item.fill } },
