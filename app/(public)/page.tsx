@@ -385,7 +385,7 @@ Tại Vẽ Zì Đó, mỗi bức tranh đều mang dấu ấn riêng của từn
           ngay hôm nay!
         </h2>
         <p className="text-gray-500 font-bold text-sm max-w-lg mx-auto">
-          Các bé đăng ký học thử sẽ được tặng bộ họa cụ vẽ cơ bản trị giá 250.000đ. Đăng ký nhận lịch học thử miễn phí ngay.
+          Đăng ký nhận lịch học thử miễn phí cho bé để trải nghiệm không gian học tập sáng tạo ngay.
         </p>
         <div className="pt-4">
           <Link 
@@ -395,9 +395,6 @@ Tại Vẽ Zì Đó, mỗi bức tranh đều mang dấu ấn riêng của từn
             ✏️ Nhận Lịch Học Thử Cho Bé
           </Link>
         </div>
-        <p className="text-[11px] font-bold text-gray-400 italic">
-          * Áp dụng cho học viên đăng ký mới tại trung tâm
-        </p>
       </section>
 
     </main>

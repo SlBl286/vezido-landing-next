@@ -8,6 +8,7 @@ import {
   Plus, Edit, Trash2, Check, Loader2, X, Info, Image, Palette, Calendar, User, Search, Eye
 } from "lucide-react";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
+import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
 import { getImageUrl } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ interface Artwork {
   comment: string | null;
   teacherName: string | null;
   className: string | null;
+  isPublic: boolean;
   date: string;
   createdAt: string;
   updatedAt: string;
@@ -44,6 +46,7 @@ export default function CMSArtworksPage() {
   // Form states
   const [formTitle, setFormTitle] = useState("");
   const [formComment, setFormComment] = useState("");
+  const [formIsPublic, setFormIsPublic] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +55,7 @@ export default function CMSArtworksPage() {
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editComment, setEditComment] = useState("");
+  const [editIsPublic, setEditIsPublic] = useState(false);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
@@ -199,12 +203,14 @@ export default function CMSArtworksPage() {
         title: formTitle.trim() || `Tranh của bé ${studentObj.studentName}`,
         comment: formComment.trim() || "Bé vẽ tranh rất đẹp và chăm chỉ!",
         className: classObj?.name || "Lớp vẽ",
-        teacherName: session?.user?.name || "Giáo viên"
+        teacherName: session?.user?.name || "Giáo viên",
+        isPublic: formIsPublic
       });
 
       showNotification("Thành công", "Đã lưu tác phẩm của con và nhận xét thành công.", "success");
       setFormTitle("");
       setFormComment("");
+      setFormIsPublic(false);
       setImageFile(null);
       setImagePreview("");
       setSelectedStudentId("");
@@ -242,6 +248,7 @@ export default function CMSArtworksPage() {
     setEditingArtwork(art);
     setEditTitle(art.title || "");
     setEditComment(art.comment || "");
+    setEditIsPublic(art.isPublic || false);
     setIsEditOpen(true);
   };
 
@@ -254,7 +261,8 @@ export default function CMSArtworksPage() {
     try {
       await cmsApi.artworks.update(editingArtwork.id, {
         title: editTitle.trim(),
-        comment: editComment.trim()
+        comment: editComment.trim(),
+        isPublic: editIsPublic
       });
       showNotification("Thành công", "Đã cập nhật tiêu đề và nhận xét thành công.", "success");
       setIsEditOpen(false);
@@ -412,6 +420,15 @@ export default function CMSArtworksPage() {
               />
             </div>
 
+            {/* Public checkbox */}
+            <div className="py-1">
+              <CustomCheckbox
+                checked={formIsPublic}
+                onChange={(checked) => setFormIsPublic(checked)}
+                label="Công khai tranh vẽ trên Triển lãm"
+              />
+            </div>
+
             <button
               type="submit"
               disabled={submitting}
@@ -504,9 +521,16 @@ export default function CMSArtworksPage() {
                     <div>
                       <div className="flex justify-between items-start gap-1">
                         <h4 className="font-black text-gray-900 text-sm line-clamp-1">{art.title}</h4>
-                        <span className="bg-purple-100 border border-purple-300 rounded px-1.5 py-0.5 text-[9px] font-black text-purple-700 whitespace-nowrap">
-                          {art.studentCode}
-                        </span>
+                        <div className="flex gap-1 items-center shrink-0">
+                          {art.isPublic && (
+                            <span className="bg-emerald-100 border border-emerald-300 rounded px-1.5 py-0.5 text-[9px] font-black text-emerald-700 whitespace-nowrap">
+                              Công khai
+                            </span>
+                          )}
+                          <span className="bg-purple-100 border border-purple-300 rounded px-1.5 py-0.5 text-[9px] font-black text-purple-700 whitespace-nowrap">
+                            {art.studentCode}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-x-2 text-[10px] text-gray-500 font-semibold mt-1">
                         <span className="flex items-center gap-0.5"><Calendar className="w-3 h-3 text-sky-500" /> {new Date(art.date).toLocaleDateString("vi-VN")}</span>
@@ -595,6 +619,15 @@ export default function CMSArtworksPage() {
                   value={editComment}
                   onChange={(e) => setEditComment(e.target.value)}
                   className="w-full border-3 border-black rounded-xl p-2.5 text-xs font-bold bg-white focus:outline-none"
+                />
+              </div>
+
+              {/* Public checkbox */}
+              <div className="py-1">
+                <CustomCheckbox
+                  checked={editIsPublic}
+                  onChange={(checked) => setEditIsPublic(checked)}
+                  label="Công khai tranh vẽ trên Triển lãm"
                 />
               </div>
 

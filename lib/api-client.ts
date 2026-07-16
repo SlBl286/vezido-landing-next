@@ -249,17 +249,18 @@ export const cmsApi = {
     }),
   },
   artworks: {
-    list: (params: { studentCode?: string } = {}) => {
+    list: (params: { studentCode?: string; public?: boolean } = {}) => {
       const query = new URLSearchParams();
       if (params.studentCode) query.append("studentCode", params.studentCode);
+      if (params.public) query.append("public", "true");
       return fetchJson<{ artworks: any[] }>(`/api/cms/artworks?${query.toString()}`);
     },
-    create: (data: { studentCode: string; imageUrl: string; title?: string; comment?: string; teacherName?: string; className?: string }) => fetchJson<{ artwork: any }>("/api/cms/artworks", {
+    create: (data: { studentCode: string; imageUrl: string; title?: string; comment?: string; teacherName?: string; className?: string; isPublic?: boolean }) => fetchJson<{ artwork: any }>("/api/cms/artworks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
-    update: (id: string, data: { title?: string; comment?: string }) => fetchJson<{ artwork: any }>(`/api/cms/artworks?id=${id}`, {
+    update: (id: string, data: { title?: string; comment?: string; isPublic?: boolean }) => fetchJson<{ artwork: any }>(`/api/cms/artworks?id=${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

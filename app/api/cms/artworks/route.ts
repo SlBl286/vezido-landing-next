@@ -6,6 +6,31 @@ import { saveBase64Image } from "@/lib/image-upload";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const studentCode = searchParams.get("studentCode");
+  const publicParam = searchParams.get("public");
+
+  // Public gallery endpoint (no auth required)
+  if (publicParam === "true") {
+    try {
+      const artworks = await prisma.studentArtwork.findMany({
+        where: { isPublic: true },
+        orderBy: { date: "desc" }
+      });
+      const artworksWithNames = await Promise.all(artworks.map(async (art) => {
+        const student = await prisma.studentClass.findFirst({
+          where: { studentCode: art.studentCode },
+          select: { studentName: true }
+        });
+        return {
+          ...art,
+          studentName: student?.studentName || "Học viên"
+        };
+      }));
+      return NextResponse.json({ artworks: artworksWithNames });
+    } catch (error) {
+      console.error("Error fetching public artworks:", error);
+      return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    }
+  }
 
   // If no studentCode is provided, require authenticated ADMIN or TEACHER session
   if (!studentCode) {
@@ -122,7 +147,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { studentCode, imageUrl, title, comment, teacherName, className } = body;
+    const { studentCode, imageUrl, title, comment, teacherName, className, isPublic } = body;
 
     if (!studentCode || !imageUrl) {
       return NextResponse.json({ error: "Mã học sinh và hình ảnh tranh là bắt buộc" }, { status: 400 });
@@ -146,7 +171,8 @@ export async function POST(req: Request) {
         title: title || "Tác phẩm chưa đặt tên",
         comment: comment || "",
         teacherName: teacherName || defaultTeacherName,
-        className: className || "Lớp vẽ"
+        className: className || "Lớp vẽ",
+        isPublic: !!isPublic
       }
     });
 
@@ -176,13 +202,14 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { title, comment } = body;
+    const { title, comment, isPublic } = body;
 
     const artwork = await prisma.studentArtwork.update({
       where: { id },
       data: {
         title,
-        comment
+        comment,
+        isPublic: isPublic !== undefined ? !!isPublic : undefined
       }
     });
 

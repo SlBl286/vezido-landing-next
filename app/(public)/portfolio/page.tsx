@@ -66,9 +66,27 @@ function PortfolioContent() {
   // Data states
   const [student, setStudent] = useState<StudentInfo | null>(null);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
-
-  // Lightbox
+  const [publicArtworks, setPublicArtworks] = useState<any[]>([]);
+  const [loadingPublic, setLoadingPublic] = useState(true);
   const [activeZoomUrl, setActiveZoomUrl] = useState<string | null>(null);
+
+  // Load public artworks on mount
+  useEffect(() => {
+    async function fetchPublicArtworks() {
+      try {
+        const res = await fetch("/api/cms/artworks?public=true");
+        if (res.ok) {
+          const data = await res.json();
+          setPublicArtworks(data.artworks || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch public artworks:", err);
+      } finally {
+        setLoadingPublic(false);
+      }
+    }
+    fetchPublicArtworks();
+  }, []);
 
   // Set mounted on client load & auto trigger search if studentCode is in URL search parameters
   useEffect(() => {
@@ -123,14 +141,14 @@ function PortfolioContent() {
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Title Header */}
-        <header className="text-center max-w-2xl mx-auto space-y-3 py-6">
-          <span className="text-sm bg-purple-100 border-2 border-black rounded-lg px-3 py-1 font-black text-purple-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider">
+        <header className="text-center max-w-2xl mx-auto space-y-4 md:space-y-5 py-6 md:py-10">
+          <span className="inline-block text-xs md:text-sm bg-purple-100 border-2 border-black rounded-lg px-3 py-1.5 font-black text-purple-800 shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase tracking-wider mb-1 md:mb-2">
             Cổng thông tin phụ huynh
           </span>
-          <h1 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight">
+          <h1 className="text-2xl md:text-5xl font-black text-gray-900 leading-tight px-1">
             Theo Dõi Học Tập & Triển Lãm Tranh
           </h1>
-          <p className="text-gray-500 font-semibold text-sm">
+          <p className="text-gray-500 font-semibold text-xs md:text-sm px-2">
             Nhập mã số học viên của bé để xem thông tin lớp học, tình hình chuyên cần và thưởng thức bộ sưu tập tranh vẽ cùng nhận xét từ giáo viên.
           </p>
         </header>
@@ -361,6 +379,79 @@ function PortfolioContent() {
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* Public Art Exhibition Gallery */}
+        {!student && !loading && (
+          <div className="border-4 border-black bg-white rounded-3xl p-6 md:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)] space-y-6">
+            <div className="text-center space-y-3.5 md:space-y-4 max-w-lg mx-auto">
+              <span className="inline-block text-[10px] bg-purple-100 border-2 border-black rounded-lg px-2.5 py-1 font-black text-purple-800 uppercase tracking-wider mb-1">
+                🖼️ Triển lãm tranh vẽ sáng tạo
+              </span>
+              <h2 className="text-xl md:text-3xl font-black text-gray-900 leading-tight">
+                Không Gian Sáng Tạo "Vẽ Zì Đó"
+              </h2>
+              <p className="text-gray-500 font-semibold text-xs md:text-sm px-2">
+                Những tác phẩm sáng tạo đầy sắc màu của các học viên Vẽ Zì Đó.
+              </p>
+            </div>
+
+            {loadingPublic ? (
+              <div className="py-16 flex flex-col items-center justify-center gap-2">
+                <RefreshCw className="w-8 h-8 animate-spin text-purple-500" />
+                <p className="text-xs font-bold text-gray-400">Đang tải triển lãm tranh...</p>
+              </div>
+            ) : publicArtworks.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 bg-gray-50 rounded-2xl">
+                <Palette className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="font-bold text-gray-500 text-xs">Phòng triển lãm hiện đang được chuẩn bị</p>
+                <p className="text-gray-400 text-[10px] mt-0.5">Các tác phẩm mới được công khai sẽ sớm xuất hiện tại đây!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 pt-2">
+                {publicArtworks.map((art) => (
+                  <div
+                    key={art.id}
+                    className="border-3 border-black bg-white rounded-2xl p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] transition-all flex flex-col justify-between group"
+                  >
+                    <div className="space-y-3">
+                      {/* Artwork image container */}
+                      <div className="border-2 border-black rounded-xl overflow-hidden relative aspect-video bg-gray-50 flex items-center justify-center cursor-pointer">
+                        <img
+                          src={getImageUrl(art.imageUrl)}
+                          alt={art.title || "Drawing"}
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Zoom overlay */}
+                        <div
+                          onClick={() => setActiveZoomUrl(getImageUrl(art.imageUrl))}
+                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        >
+                          <div className="bg-white border-2 border-black rounded-full p-1.5 text-black shadow-md">
+                            <Eye className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Details info */}
+                      <div className="space-y-1.5 text-left">
+                        <div className="flex justify-between items-start gap-1">
+                          <h4 className="font-black text-gray-900 text-sm line-clamp-1">
+                            {art.title || "Tác phẩm chưa đặt tên"}
+                          </h4>
+                        </div>
+                        <div className="text-[10px] font-semibold text-gray-500 space-y-0.5">
+                          <p>🎨 Tác giả: <span className="font-black text-rose-500">{art.studentName}</span></p>
+                          <p>🏫 Lớp học: <span className="font-extrabold text-gray-700">{art.className || "Lớp vẽ"}</span></p>
+                          <p>📅 Ngày vẽ: {new Date(art.date).toLocaleDateString("vi-VN")}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

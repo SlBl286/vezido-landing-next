@@ -186,10 +186,10 @@ export function EnrollFormClient({ courses }: EnrollFormClientProps) {
             )}
 
             <div className="bg-amber-50 border-2 border-black rounded-2xl p-4 text-left space-y-2 text-xs text-amber-900 shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-              <p className="font-black">🎁 Quà tặng chào mừng khóa mới:</p>
+              <p className="font-black">✨ Đặc quyền khi ghi danh:</p>
               <ul className="list-disc pl-4 space-y-1 font-semibold">
-                <li>Bộ họa cụ vẽ màu cao cấp trị giá <strong>250.000đ</strong> miễn phí.</li>
-                <li>Lịch kiểm tra trình độ & xếp lớp vẽ thử miễn phí.</li>
+                <li>Kiểm tra trình độ & xếp lớp vẽ thử miễn phí 100%.</li>
+                <li>Được cung cấp đầy đủ họa cụ & vật liệu học tập tại lớp học.</li>
               </ul>
             </div>
             <p>
@@ -210,7 +210,7 @@ export function EnrollFormClient({ courses }: EnrollFormClientProps) {
           
           {/* Top Stamp decoration */}
           <div className="absolute -top-4 -right-4 bg-rose-400 border-2 border-black text-black px-6 py-3 rounded-full rotate-12 shadow-md font-black text-xs uppercase z-10">
-            🎨 Tặng Họa Cụ
+            ✨ Học Thử Miễn Phí
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8 text-left">

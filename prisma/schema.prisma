@@ -196,6 +196,7 @@ model StudentArtwork {
   className    String?       // Tên lớp học khi vẽ tranh
   sessionId    String?       // Liên kết với buổi học cụ thể
   session      ClassSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  isPublic     Boolean       @default(false) // Trạng thái công khai tranh ra trang ngoài
   date         DateTime      @default(now()) // Ngày vẽ tranh
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
