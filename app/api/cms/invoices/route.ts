@@ -72,6 +72,7 @@ export async function GET() {
       type: e.type, // "EXPENSE" or "REVENUE"
       category: e.category?.name || "Khác",
       categoryId: e.categoryId,
+      spentBy: e.spentBy,
       date: e.date,
       description: e.description,
       invoices: e.invoices || [],
@@ -85,6 +86,7 @@ export async function GET() {
       amount: tx.totalCost || 0,
       type: "EXPENSE",
       category: "Họa cụ",
+      spentBy: tx.performedBy || "Hệ thống",
       date: tx.date,
       description: tx.purpose || "Tự động ghi nhận từ Quản lý Kho họa cụ",
       invoices: tx.invoices || [],

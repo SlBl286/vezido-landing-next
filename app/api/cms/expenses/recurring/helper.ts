@@ -37,7 +37,8 @@ export async function checkAndGenerateRecurring() {
                 type: template.type,
                 categoryId: template.categoryId,
                 description: template.description || `Tự động tạo từ cấu hình chi phí cố định (Ngày ${template.dayOfMonth} hàng tháng)`,
-                date: txnDate
+                date: txnDate,
+                spentBy: template.spentBy
               }
             });
 

@@ -47,6 +47,7 @@ export default function CMSInvoicesPage() {
     type: "EXPENSE", // "EXPENSE" or "REVENUE"
     dayOfMonth: "1",
     categoryId: "",
+    spentBy: "",
     description: "",
     isActive: true
   });
@@ -61,6 +62,7 @@ export default function CMSInvoicesPage() {
     amount: "",
     type: "EXPENSE", // "EXPENSE" or "REVENUE"
     categoryId: "",
+    spentBy: "",
     date: new Date().toISOString().split("T")[0],
     description: "",
     invoices: [] as string[]
@@ -68,6 +70,7 @@ export default function CMSInvoicesPage() {
   const [submittingExpense, setSubmittingExpense] = useState(false);
   const [expenseError, setExpenseError] = useState("");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<string[]>(["Admin", "Hệ thống"]);
 
   const handleViewInvoiceImage = (url: string) => {
     if (url.toLowerCase().endsWith(".pdf")) {
@@ -115,6 +118,16 @@ export default function CMSInvoicesPage() {
       setInvoices(data.invoices || []);
       setExpenses(data.expenses || []);
       setStats(data.stats || { totalRevenue: 0, totalExpense: 0, netProfit: 0, totalInvoices: 0, courses: [], expenseCategories: [], months: [] });
+
+      try {
+        const res = await cmsApi.teachers.list();
+        const list = (res.teachers || []).map((t: any) => t.user?.name || t.user?.username).filter(Boolean);
+        const historicalSpenders = (data.expenses || []).map((e: any) => e.spentBy).filter(Boolean);
+        const uniqueStaff = Array.from(new Set(["Admin", ...list, ...historicalSpenders, "Hệ thống"]));
+        setStaffList(uniqueStaff);
+      } catch (staffErr) {
+        console.error("Failed to load staff list:", staffErr);
+      }
     } catch (err: any) {
       showNotification("Lỗi tải dữ liệu", err.message || "Không thể tải báo cáo doanh thu & chi tiêu.", "error");
     } finally {
@@ -183,6 +196,7 @@ export default function CMSInvoicesPage() {
       amount: "",
       type: "EXPENSE",
       categoryId: categories[0]?.id || "",
+      spentBy: session?.user?.name || "Admin",
       date: new Date().toISOString().split("T")[0],
       description: "",
       invoices: []
@@ -199,6 +213,7 @@ export default function CMSInvoicesPage() {
       amount: String(exp.amount),
       type: exp.type || "EXPENSE",
       categoryId: matchedCat?.id || categories[0]?.id || "",
+      spentBy: exp.spentBy || "Admin",
       date: exp.date ? new Date(exp.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
       description: exp.description || "",
       invoices: exp.invoices || []
@@ -221,6 +236,7 @@ export default function CMSInvoicesPage() {
       amount: Number(expenseForm.amount),
       type: expenseForm.type,
       categoryId: expenseForm.categoryId,
+      spentBy: expenseForm.spentBy || null,
       date: new Date(expenseForm.date).toISOString(),
       description: expenseForm.description.trim() || null,
       invoices: expenseForm.invoices
@@ -252,6 +268,7 @@ export default function CMSInvoicesPage() {
       type: "EXPENSE",
       dayOfMonth: "1",
       categoryId: categories[0]?.id || "",
+      spentBy: session?.user?.name || "Admin",
       description: "",
       isActive: true
     });
@@ -267,6 +284,7 @@ export default function CMSInvoicesPage() {
       type: template.type || "EXPENSE",
       dayOfMonth: String(template.dayOfMonth),
       categoryId: template.categoryId || categories[0]?.id || "",
+      spentBy: template.spentBy || "Admin",
       description: template.description || "",
       isActive: template.isActive
     });
@@ -289,6 +307,7 @@ export default function CMSInvoicesPage() {
       type: recurringForm.type,
       dayOfMonth: Number(recurringForm.dayOfMonth),
       categoryId: recurringForm.categoryId || null,
+      spentBy: recurringForm.spentBy || null,
       description: recurringForm.description.trim() || null,
       isActive: recurringForm.isActive
     };
@@ -605,16 +624,43 @@ export default function CMSInvoicesPage() {
       // Column mapping in "Doanh thu học phí" sheet:
       // A=Ngày thanh toán, B=Mã HĐ, C=Mã HS, D=Tên HS, E=Phụ huynh, F=SDT
       // G=Lớp học, H=Khóa học, I=Tiền gốc, J=Giảm giá %, K=Tiền đóng TT, L=Phương thức, M=Mã ưu đãi
-      const summaryData = [
-        [reportTitle],
-        [`Ngày xuất báo cáo: ${new Date().toLocaleString("vi-VN")}`],
-        [],
+      const leftRowsData: any[][] = [
         ["Chỉ tiêu", "Giá trị (VNĐ)", "Mô tả"],
         ["Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!K2:K${revLen})`, v: tuitionRevenue }, "Tổng số tiền học phí thực tế đã thu nhận"],
         ["Doanh Thu Khác", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Thu nhập khác", 'Nhật ký thu chi'!D2:D${expLen})`, v: otherRevenue }, "Các khoản thu nhập khác ngoài học phí"],
         ["Tổng Chi Tiêu Thực Tế", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Chi tiêu thực tế", 'Nhật ký thu chi'!D2:D${expLen})`, v: actualExpense }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
-        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5+B6-B7", v: netProfitVal }, "Hiệu số giữa Doanh thu và Chi phí"],
-        [],
+        ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "D5+D6-D7", v: netProfitVal }, "Hiệu số giữa Doanh thu và Chi phí"],
+      ];
+
+      const maxMonthlyVal = Math.max(...(filteredStats?.months || []).map(m => Math.max(m.revenue || 0, m.expense || 0)), 1);
+      const months = filteredStats?.months || [];
+
+      // Initialize summaryData
+      const summaryData: any[][] = [
+        [reportTitle],
+        [`Ngày xuất báo cáo: ${new Date().toLocaleString("vi-VN")}`],
+        []
+      ];
+
+      // Helper to set cell value at dynamic indices
+      const setCell = (row: any[], colIdx: number, val: any) => {
+        row[colIdx] = val;
+      };
+
+      // Populate Left Table 1 (rows 3 to 7)
+      leftRowsData.forEach(r => {
+        const row: any[] = [];
+        setCell(row, 0, r[0]);
+        setCell(row, 3, r[1]);
+        setCell(row, 6, r[2]);
+        summaryData.push(row);
+      });
+
+      // Row 8: Blank
+      summaryData.push([]);
+
+      // Rows 9 to 13: Left Table 2
+      const paymentRowsData = [
         ["Cơ cấu doanh thu theo phương thức thanh toán:"],
         ["Phương thức", "Số tiền (VNĐ)"],
         ["Chuyển khoản", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Chuyển khoản", 'Doanh thu học phí'!K2:K${revLen})`, v: transferRevenue }],
@@ -622,35 +668,215 @@ export default function CMSInvoicesPage() {
         ["Trực tuyến", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Trực tuyến", 'Doanh thu học phí'!K2:K${revLen})`, v: onlineRevenue }],
       ];
 
+      paymentRowsData.forEach((r, idx) => {
+        const row: any[] = [];
+        if (idx === 0) {
+          setCell(row, 0, r[0]);
+        } else {
+          setCell(row, 0, r[0]);
+          setCell(row, 3, r[1]);
+        }
+        summaryData.push(row);
+      });
+
+      // Row 14, 15: Blank
+      summaryData.push([], []);
+
+      // Row 16: Chart Title
+      const monthlyHeaderIndex = summaryData.length;
+      summaryData.push(["THỐNG KÊ THU CHI HÀNG THÁNG"]);
+
+      // Rows 17 to 26: Chart bars
+      const chartStartIndex = summaryData.length;
+      for (let rIdx = 9; rIdx >= 0; rIdx--) {
+        const row: any[] = [];
+        setCell(row, 0, { t: "n", v: Math.round((rIdx + 1) * (maxMonthlyVal / 10)) });
+
+        months.forEach((m, mIdx) => {
+          const fCol = 1 + mIdx * 3;
+          const gCol = 2 + mIdx * 3;
+          const isRevActive = (m.revenue || 0) >= (rIdx + 1) * (maxMonthlyVal / 10);
+          const isExpActive = (m.expense || 0) >= (rIdx + 1) * (maxMonthlyVal / 10);
+          setCell(row, fCol, isRevActive ? "" : "");
+          setCell(row, gCol, isExpActive ? "" : "");
+        });
+        summaryData.push(row);
+      }
+      const chartEndIndex = summaryData.length;
+
+      // Row 27: Month Labels (X-Axis)
+      const monthLabelRowIndex = summaryData.length;
+      const monthLabelRow: any[] = [];
+      setCell(monthLabelRow, 0, { t: "n", v: 0 });
+      months.forEach((m, mIdx) => {
+        const fCol = 1 + mIdx * 3;
+        setCell(monthLabelRow, fCol, m.label);
+      });
+      summaryData.push(monthLabelRow);
+
+      // Row 28: Legend markers (Thu/Chi)
+      const indicatorRowIndex = summaryData.length;
+      const indicatorRow: any[] = [];
+      months.forEach((m, mIdx) => {
+        const fCol = 1 + mIdx * 3;
+        const gCol = 2 + mIdx * 3;
+        setCell(indicatorRow, fCol, "Thu");
+        setCell(indicatorRow, gCol, "Chi");
+      });
+      summaryData.push(indicatorRow);
+
+      // Row 29, 30: Blank
+      summaryData.push([], []);
+
+      // Row 31: Category Header Title
+      const categoryHeaderIndex = summaryData.length;
+      summaryData.push(["CƠ CẤU PHÂN BỔ CHI PHÍ (THEO DANH MỤC)"]);
+      
+      // Row 32: Category Table Headers
+      const categoryTableHeadIndex = summaryData.length;
+      const catHeadRow: any[] = [];
+      setCell(catHeadRow, 0, "Danh mục chi tiêu");
+      setCell(catHeadRow, 3, "Số tiền (VNĐ)");
+      setCell(catHeadRow, 6, "Tỷ lệ (%)");
+      setCell(catHeadRow, 8, "Biểu đồ tỷ lệ phân bổ");
+      summaryData.push(catHeadRow);
+
+      // Row 33 onwards: Category Data
+      const totalExpenseSum = filteredStats?.totalExpense || 1;
+      const categoryStartIndex = summaryData.length;
+      (filteredStats?.expenseCategories || []).forEach(cat => {
+        const amt = cat.revenue || 0;
+        const percentage = Math.round((amt / totalExpenseSum) * 100);
+        const barLength = 15;
+        const filled = Math.max(0, Math.min(barLength, Math.round((percentage / 100) * barLength)));
+        const bar = "█".repeat(filled) + "░".repeat(barLength - filled);
+        
+        const row: any[] = [];
+        setCell(row, 0, cat.category);
+        setCell(row, 3, { t: "n", v: amt });
+        setCell(row, 6, `${percentage}%`);
+        setCell(row, 8, `${bar} ${percentage}%`);
+        summaryData.push(row);
+      });
+      const categoryEndIndex = summaryData.length;
+
       // 4. Create Workbook & Sheets
       const workbook = XLSX.utils.book_new();
 
       // Sheet 1: Summary Sheet
       const worksheetSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      worksheetSummary['!cols'] = [
-        { wch: 35 }, // Col A width
-        { wch: 20 }, // Col B width
-        { wch: 45 }  // Col C width
+      
+      const colWidths = [
+        { wch: 12 }, // Col A
+        { wch: 6 },  // Col B
+        { wch: 6 },  // Col C
+        { wch: 6 },  // Col D
+        { wch: 6 },  // Col E
+        { wch: 6 },  // Col F
+        { wch: 6 },  // Col G
+        { wch: 6 },  // Col H
+        { wch: 6 },  // Col I
+        { wch: 6 },  // Col J
+        { wch: 6 },  // Col K
+        { wch: 6 },  // Col L
+        { wch: 6 },  // Col M
+        { wch: 6 },  // Col N
+        { wch: 6 },  // Col O
+        { wch: 6 },  // Col P
+        { wch: 6 },  // Col Q
+        { wch: 6 },  // Col R
+        { wch: 6 },  // Col S
+        { wch: 6 },  // Col T
       ];
+      worksheetSummary['!cols'] = colWidths;
+
       // Format currency fields in Summary Sheet
-      ["B5", "B6", "B7", "B8", "B12", "B13", "B14"].forEach(cellRef => {
+      const currencyCells = [
+        "D5", "D6", "D7", "D8",
+        "D12", "D13", "D14"
+      ];
+      for (let r = chartStartIndex; r <= monthLabelRowIndex; r++) {
+        currencyCells.push(`A${r + 1}`);
+      }
+      for (let r = categoryStartIndex; r < categoryEndIndex; r++) {
+        currencyCells.push(`D${r + 1}`);
+      }
+
+      currencyCells.forEach(cellRef => {
         if (worksheetSummary[cellRef]) {
           worksheetSummary[cellRef].z = '#,##0" đ"';
           worksheetSummary[cellRef].t = 'n';
         }
       });
 
-      // Merge header title A1:C1
-      worksheetSummary['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }
+      // Merge headers/subtitles/data across columns to avoid clashes
+      const merges: any[] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 18 } }, // Title
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 18 } }, // Date
       ];
 
+      // Left Table Merges
+      for (let r = 3; r <= 7; r++) {
+        merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
+        merges.push({ s: { r, c: 3 }, e: { r, c: 5 } });
+        merges.push({ s: { r, c: 6 }, e: { r, c: 18 } });
+      }
+
+      // Payment Table Merges
+      merges.push({ s: { r: 9, c: 0 }, e: { r: 9, c: 18 } });
+      for (let r = 10; r <= 13; r++) {
+        merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
+        merges.push({ s: { r, c: 3 }, e: { r, c: 5 } });
+      }
+
+      // Chart Section merges
+      merges.push({ s: { r: monthlyHeaderIndex, c: 0 }, e: { r: monthlyHeaderIndex, c: 18 } });
+      months.forEach((_, mIdx) => {
+        merges.push({
+          s: { r: monthLabelRowIndex, c: 1 + mIdx * 3 },
+          e: { r: monthLabelRowIndex, c: 2 + mIdx * 3 }
+        });
+      });
+
+      // Category Section merges
+      merges.push({ s: { r: categoryHeaderIndex, c: 0 }, e: { r: categoryHeaderIndex, c: 18 } });
+      // Header merges
+      merges.push({ s: { r: categoryTableHeadIndex, c: 0 }, e: { r: categoryTableHeadIndex, c: 2 } });
+      merges.push({ s: { r: categoryTableHeadIndex, c: 3 }, e: { r: categoryTableHeadIndex, c: 5 } });
+      merges.push({ s: { r: categoryTableHeadIndex, c: 6 }, e: { r: categoryTableHeadIndex, c: 7 } });
+      merges.push({ s: { r: categoryTableHeadIndex, c: 8 }, e: { r: categoryTableHeadIndex, c: 18 } });
+      // Row merges
+      for (let r = categoryStartIndex; r < categoryEndIndex; r++) {
+        merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
+        merges.push({ s: { r, c: 3 }, e: { r, c: 5 } });
+        merges.push({ s: { r, c: 6 }, e: { r, c: 7 } });
+        merges.push({ s: { r, c: 8 }, e: { r, c: 18 } });
+      }
+      worksheetSummary['!merges'] = merges;
+
       // Style Summary Sheet cells
-      const rangeSum = XLSX.utils.decode_range(worksheetSummary['!ref'] || "A1:C14");
+      const rangeSum = XLSX.utils.decode_range(worksheetSummary['!ref'] || "A1:S50");
       for (let R = rangeSum.s.r; R <= rangeSum.e.r; R++) {
         for (let C = rangeSum.s.c; C <= rangeSum.e.c; C++) {
           const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-          const cell = worksheetSummary[cellRef];
+          
+          // Ensure all cells in table merge bounds exist so they get border/fill styling
+          const isLeftTable1Row = R >= 3 && R <= 7;
+          const isLeftTable2Row = R >= 10 && R <= 13;
+          const isCatTableRow = R >= categoryStartIndex && R < categoryEndIndex;
+          const isCatHeaderRow = R === categoryTableHeadIndex;
+          
+          const isTableArea = (isLeftTable1Row && C <= 18) || 
+                              (isLeftTable2Row && C <= 5) || 
+                              (isCatTableRow && C <= 18) || 
+                              (isCatHeaderRow && C <= 18);
+          
+          let cell = worksheetSummary[cellRef];
+          if (!cell && isTableArea) {
+            cell = { t: "s", v: "" };
+            worksheetSummary[cellRef] = cell;
+          }
+          
           if (!cell) continue;
 
           if (R === 0) {
@@ -664,55 +890,48 @@ export default function CMSInvoicesPage() {
             cell.s = {
               font: { name: "Segoe UI", sz: 9.5, italic: true, color: { rgb: "666666" } }
             };
-          } else if (R === 3) {
+          } else if (R === 3 && C <= 18) {
             // Main table header style
             cell.s = {
               font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "000000" } },
               fill: { fgColor: { rgb: "FFD275" } }, // Yellow/Gold
               alignment: { horizontal: "center", vertical: "center" },
-              border: {
-                top: { style: "medium", color: { rgb: "000000" } },
-                bottom: { style: "medium", color: { rgb: "000000" } },
-                left: { style: "thin", color: { rgb: "000000" } },
-                right: { style: "thin", color: { rgb: "000000" } }
-              }
+              border: borderBlackThin
             };
-          } else if (R === 4 || R === 5) {
-            // Doanh thu (Green highlighting)
+          } else if (R >= 4 && R <= 7) {
+            // Left Table 1 Data rows
+            const isNumeric = C >= 3 && C <= 5;
             cell.s = {
-              font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "1B5E20" } },
-              fill: { fgColor: { rgb: "E8F5E9" } }, // Emerald-50
-              border: borderBlackThin,
-              alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
+              font: { name: "Segoe UI", sz: 10, color: { rgb: "333333" } },
+              alignment: { horizontal: isNumeric ? "right" : "left", vertical: "center" },
+              border: borderBlackThin
             };
-          } else if (R === 6) {
-            // Total Expenditure (Red highlighting)
-            cell.s = {
-              font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "B71C1C" } },
-              fill: { fgColor: { rgb: "FFEBEE" } }, // Rose-50
-              border: borderBlackThin,
-              alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
-            };
-          } else if (R === 7) {
-            // Net Profit (Blue highlighting & Double bottom border)
-            cell.s = {
-              font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "0D47A1" } },
-              fill: { fgColor: { rgb: "E3F2FD" } }, // Blue-50
-              border: {
+            if (R === 4 || R === 5) {
+              cell.s.font.bold = true;
+              cell.s.font.color = { rgb: "1B5E20" };
+              cell.s.fill = { fgColor: { rgb: "E8F5E9" } };
+            } else if (R === 6) {
+              cell.s.font.bold = true;
+              cell.s.font.color = { rgb: "B71C1C" };
+              cell.s.fill = { fgColor: { rgb: "FFEBEE" } };
+            } else if (R === 7) {
+              cell.s.font.bold = true;
+              cell.s.font.color = { rgb: "0D47A1" };
+              cell.s.fill = { fgColor: { rgb: "E3F2FD" } };
+              cell.s.border = {
                 top: { style: "thin", color: { rgb: "000000" } },
                 bottom: { style: "double", color: { rgb: "000000" } },
                 left: { style: "thin", color: { rgb: "000000" } },
                 right: { style: "thin", color: { rgb: "000000" } }
-              },
-              alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
-            };
+              };
+            }
           } else if (R === 9) {
-            // Subtitle
+            // Payment Subtitle
             cell.s = {
               font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "000000" } }
             };
-          } else if (R === 10) {
-            // Sub-table headers
+          } else if (R === 10 && C <= 5) {
+            // Payment header
             cell.s = {
               font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: "000000" } },
               fill: { fgColor: { rgb: "BAE1FF" } }, // Light Blue
@@ -721,10 +940,100 @@ export default function CMSInvoicesPage() {
             };
           } else if (R >= 11 && R <= 13) {
             // Payment breakdown rows
+            const isNumeric = C >= 3 && C <= 5;
             cell.s = {
               font: { name: "Segoe UI", sz: 10, color: { rgb: "333333" } },
               border: borderBlackThin,
-              alignment: { horizontal: C === 1 ? "right" : "left", vertical: "center" }
+              alignment: { horizontal: isNumeric ? "right" : "left", vertical: "center" }
+            };
+          } else if (R === monthlyHeaderIndex) {
+            // Section Header Title (e.g. "Thống kê thu chi hàng tháng")
+            cell.s = {
+              font: { name: "Segoe UI", sz: 12, bold: true, color: { rgb: "000000" } },
+              alignment: { horizontal: "left", vertical: "center" }
+            };
+          } else if (R >= chartStartIndex && R < chartEndIndex) {
+            if (C >= 1 && C < 1 + months.length * 3) {
+              const mIdx = Math.floor((C - 1) / 3);
+              const colType = (C - 1) % 3; // 0 = Thu, 1 = Chi, 2 = Spacer
+              if (colType === 0 || colType === 1) {
+                const m = months[mIdx];
+                const rIdx = chartEndIndex - 1 - R;
+                const val = colType === 0 ? (m.revenue || 0) : (m.expense || 0);
+                const isActive = val >= (rIdx + 1) * (maxMonthlyVal / 10);
+                
+                if (isActive) {
+                  cell.s = {
+                    fill: { fgColor: { rgb: colType === 0 ? "FFD275" : "FFAAA6" } },
+                    border: {
+                      top: { style: "thin", color: { rgb: "000000" } },
+                      bottom: { style: "thin", color: { rgb: "000000" } },
+                      left: { style: "thin", color: { rgb: "000000" } },
+                      right: { style: "thin", color: { rgb: "000000" } }
+                    }
+                  };
+                } else {
+                  cell.s = {
+                    fill: { fgColor: { rgb: "FFFFFF" } }
+                  };
+                }
+              }
+            } else if (C === 0) {
+              // Y-Axis scale label in column A
+              cell.s = {
+                font: { name: "Segoe UI", sz: 9, color: { rgb: "666666" } },
+                alignment: { horizontal: "right", vertical: "center" }
+              };
+            }
+          } else if (R === monthLabelRowIndex) {
+            if (C >= 1 && C < 1 + months.length * 3) {
+              cell.s = {
+                font: { name: "Segoe UI", sz: 9, bold: true, color: { rgb: "000000" } },
+                alignment: { horizontal: "center", vertical: "center" },
+                border: {
+                  bottom: { style: "medium", color: { rgb: "000000" } }
+                }
+              };
+            } else if (C === 0) {
+              // "0 đ" label in column A
+              cell.s = {
+                font: { name: "Segoe UI", sz: 9, color: { rgb: "666666" } },
+                alignment: { horizontal: "right", vertical: "center" }
+              };
+            }
+          } else if (R === indicatorRowIndex) {
+            if (C >= 1 && C < 1 + months.length * 3) {
+              const colType = (C - 1) % 3;
+              if (colType === 0 || colType === 1) {
+                cell.s = {
+                  font: { name: "Segoe UI", sz: 8, bold: true, color: { rgb: "000000" } },
+                  fill: { fgColor: { rgb: colType === 0 ? "FFD275" : "FFAAA6" } },
+                  alignment: { horizontal: "center", vertical: "center" },
+                  border: borderThin
+                };
+              }
+            }
+          } else if (R === categoryHeaderIndex) {
+            cell.s = {
+              font: { name: "Segoe UI", sz: 12, bold: true, color: { rgb: "000000" } },
+              alignment: { horizontal: "left", vertical: "center" }
+            };
+          } else if (R === categoryTableHeadIndex && C <= 18) {
+            cell.s = {
+              font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: "000000" } },
+              fill: { fgColor: { rgb: "FFEBEE" } },
+              alignment: { horizontal: "center", vertical: "center" },
+              border: borderBlackThin
+            };
+          } else if (R >= categoryStartIndex && R < categoryEndIndex) {
+            const isNumeric = C >= 3 && C <= 5;
+            cell.s = {
+              font: { name: "Segoe UI", sz: 10, color: { rgb: "333333" } },
+              alignment: {
+                horizontal: isNumeric ? "right" : (C >= 8 ? "center" : "left"),
+                vertical: "center"
+              },
+              border: borderThin
             };
           }
         }
@@ -755,7 +1064,7 @@ export default function CMSInvoicesPage() {
       // Sheet 3: Master Expense Sheet (tất cả danh mục)
       const expenseHeaders = [
         "Ngày giao dịch", "Nội dung giao dịch", "Loại giao dịch", "Danh mục",
-        "Số tiền (VNĐ)", "Mô tả / Chi tiết", "Loại ghi nhận"
+        "Người chi", "Số tiền (VNĐ)", "Mô tả / Chi tiết", "Loại ghi nhận"
       ];
 
       // Re-map with Ngày giao dịch first for consistency
@@ -764,6 +1073,7 @@ export default function CMSInvoicesPage() {
         "Nội dung giao dịch": exp.title || "",
         "Loại giao dịch": exp.type === "REVENUE" ? "Thu nhập khác" : "Chi tiêu thực tế",
         "Danh mục": exp.category || "Khác",
+        "Người chi": exp.spentBy || "Admin",
         "Số tiền (VNĐ)": exp.amount || 0,
         "Mô tả / Chi tiết": exp.description || "",
         "Loại ghi nhận": exp.isReadOnly ? "Tự động" : "Thủ công"
@@ -773,9 +1083,9 @@ export default function CMSInvoicesPage() {
         ? XLSX.utils.aoa_to_sheet([expenseHeaders])
         : XLSX.utils.json_to_sheet(expenseRowsOrdered);
       autoFitColumns(worksheetExpense, expenseRowsOrdered);
-      formatCurrencyColumn(worksheetExpense, "E", 2, expenseRowsOrdered.length + 1);
+      formatCurrencyColumn(worksheetExpense, "F", 2, expenseRowsOrdered.length + 1);
       styleJsonSheet(worksheetExpense, "FFAAA6"); // Light Pink/Rose headers
-      appendTotalRow(worksheetExpense, expenseRowsOrdered.length, ["E"], "A");
+      appendTotalRow(worksheetExpense, expenseRowsOrdered.length, ["F"], "A");
       XLSX.utils.book_append_sheet(workbook, worksheetExpense, "Nhật ký thu chi");
 
       // Sheet 4+: One sheet per category
@@ -810,9 +1120,9 @@ export default function CMSInvoicesPage() {
           ? XLSX.utils.aoa_to_sheet([expenseHeaders])
           : XLSX.utils.json_to_sheet(catRows);
         autoFitColumns(wsCat, catRows);
-        formatCurrencyColumn(wsCat, "E", 2, catRows.length + 1);
+        formatCurrencyColumn(wsCat, "F", 2, catRows.length + 1);
         styleJsonSheet(wsCat, categoryColors[idx % categoryColors.length]);
-        appendTotalRow(wsCat, catRows.length, ["E"], "A");
+        appendTotalRow(wsCat, catRows.length, ["F"], "A");
         XLSX.utils.book_append_sheet(workbook, wsCat, safeName);
       });
 
@@ -1575,6 +1885,7 @@ export default function CMSInvoicesPage() {
                   <tr className="border-b-4 border-black">
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Nội dung khoản chi</th>
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Danh mục</th>
+                    <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Người chi</th>
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Số tiền nộp</th>
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Ngày chi</th>
                     <th className="py-3 px-4 font-black text-black uppercase tracking-wider text-xs">Hóa đơn</th>
@@ -1627,6 +1938,9 @@ export default function CMSInvoicesPage() {
                           <span className={`border px-2 py-0.5 rounded font-black text-[10px] uppercase whitespace-nowrap ${badgeClass}`}>
                             {exp.category || "Khác"}
                           </span>
+                        </td>
+                        <td className="py-4 px-4 font-bold text-gray-700 text-xs">
+                          {exp.spentBy || "Admin"}
                         </td>
                         <td className="py-4 px-4 font-black text-rose-700 text-sm">
                           - {exp.amount?.toLocaleString("vi-VN")} đ
@@ -1796,6 +2110,34 @@ export default function CMSInvoicesPage() {
                   <p className="text-[10px] text-amber-700 font-extrabold mt-1.5 italic bg-amber-50 border border-amber-200 rounded-lg p-2 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                     ✍️ Bằng chữ: {spellNumberVietnamese(Number(expenseForm.amount))}
                   </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Người chi / thực hiện</label>
+                <CustomSelect
+                  value={!staffList.includes(expenseForm.spentBy) ? "Khác" : expenseForm.spentBy}
+                  onChange={val => {
+                    if (val === "Khác") {
+                      setExpenseForm({ ...expenseForm, spentBy: "" });
+                    } else {
+                      setExpenseForm({ ...expenseForm, spentBy: val });
+                    }
+                  }}
+                  options={[
+                    ...staffList.map(s => ({ value: s, label: s })),
+                    { value: "Khác", label: "Khác (Nhập tay)..." }
+                  ]}
+                  placeholder="Chọn người chi..."
+                />
+                {!staffList.includes(expenseForm.spentBy) && (
+                  <input
+                    type="text"
+                    placeholder="Nhập tên người chi..."
+                    className="mt-2 w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                    value={expenseForm.spentBy}
+                    onChange={e => setExpenseForm({ ...expenseForm, spentBy: e.target.value })}
+                  />
                 )}
               </div>
 
@@ -2217,6 +2559,34 @@ export default function CMSInvoicesPage() {
                     setRecurringForm({ ...recurringForm, amount: rawValue });
                   }}
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-800 mb-1">Người chi / thực hiện</label>
+                <CustomSelect
+                  value={!staffList.includes(recurringForm.spentBy) ? "Khác" : recurringForm.spentBy}
+                  onChange={val => {
+                    if (val === "Khác") {
+                      setRecurringForm({ ...recurringForm, spentBy: "" });
+                    } else {
+                      setRecurringForm({ ...recurringForm, spentBy: val });
+                    }
+                  }}
+                  options={[
+                    ...staffList.map(s => ({ value: s, label: s })),
+                    { value: "Khác", label: "Khác (Nhập tay)..." }
+                  ]}
+                  placeholder="Chọn người chi..."
+                />
+                {!staffList.includes(recurringForm.spentBy) && (
+                  <input
+                    type="text"
+                    placeholder="Nhập tên người chi..."
+                    className="mt-2 w-full border-3 border-black rounded-xl p-2.5 bg-gray-50 font-bold text-black focus:outline-none text-xs"
+                    value={recurringForm.spentBy}
+                    onChange={e => setRecurringForm({ ...recurringForm, spentBy: e.target.value })}
+                  />
+                )}
               </div>
 
               <div>

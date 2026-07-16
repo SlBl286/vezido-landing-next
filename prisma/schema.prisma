@@ -355,6 +355,7 @@ model Expense {
   categoryId          String?
   category            ExpenseCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   date                DateTime          @default(now()) // Ngày giao dịch
+  spentBy             String?           // Người chi / thực hiện
   description         String?           @db.Text // Ghi chú chi tiết
   invoices            String[]          // Danh sách đường dẫn ảnh hóa đơn
   supplyTransactionId String?           // Liên kết giao dịch kho (nếu có)
@@ -371,6 +372,7 @@ model RecurringTemplate {
   dayOfMonth  Int                // Ngày tạo tự động hàng tháng (1-31)
   categoryId  String?
   category    ExpenseCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  spentBy     String?            // Người chi / thực hiện
   description String?            @db.Text
   isActive    Boolean            @default(true)
   createdAt   DateTime           @default(now())

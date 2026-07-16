@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { title, amount, type, dayOfMonth, categoryId, description, isActive } = body;
+    const { title, amount, type, dayOfMonth, categoryId, description, isActive, spentBy } = body;
 
     if (!title || !title.trim() || amount === undefined || !dayOfMonth || !type) {
       return NextResponse.json({ error: "Vui lòng điền đầy đủ các trường bắt buộc" }, { status: 400 });
@@ -53,6 +53,7 @@ export async function POST(req: Request) {
         type,
         dayOfMonth: day,
         categoryId: categoryId || null,
+        spentBy: spentBy || null,
         description: description?.trim() || null,
         isActive: isActive !== undefined ? !!isActive : true
       },
@@ -83,7 +84,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { title, amount, type, dayOfMonth, categoryId, description, isActive } = body;
+    const { title, amount, type, dayOfMonth, categoryId, description, isActive, spentBy } = body;
 
     if (!title || !title.trim() || amount === undefined || !dayOfMonth || !type) {
       return NextResponse.json({ error: "Vui lòng điền đầy đủ các trường bắt buộc" }, { status: 400 });
@@ -102,6 +103,7 @@ export async function PUT(req: Request) {
         type,
         dayOfMonth: day,
         categoryId: categoryId || null,
+        spentBy: spentBy || null,
         description: description?.trim() || null,
         isActive: isActive !== undefined ? !!isActive : true
       },

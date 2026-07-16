@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { title, amount, categoryId, category, date, description, invoices, type } = body;
+    const { title, amount, categoryId, category, date, description, invoices, type, spentBy } = body;
 
     if (!title || !title.trim() || amount === undefined || (!categoryId && !category)) {
       return NextResponse.json({ error: "Vui lòng điền đầy đủ các trường bắt buộc" }, { status: 400 });
@@ -82,6 +82,7 @@ export async function POST(req: Request) {
         type: type || "EXPENSE",
         categoryId: finalCategoryId,
         date: date ? new Date(date) : new Date(),
+        spentBy: spentBy || null,
         description: description?.trim() || null,
         invoices: savedInvoices
       },
@@ -112,7 +113,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { title, amount, categoryId, category, date, description, invoices, type } = body;
+    const { title, amount, categoryId, category, date, description, invoices, type, spentBy } = body;
 
     if (!title || !title.trim() || amount === undefined || (!categoryId && !category)) {
       return NextResponse.json({ error: "Vui lòng điền đầy đủ các trường bắt buộc" }, { status: 400 });
@@ -160,6 +161,7 @@ export async function PUT(req: Request) {
         type: type || "EXPENSE",
         categoryId: finalCategoryId,
         date: date ? new Date(date) : new Date(),
+        spentBy: spentBy || null,
         description: description?.trim() || null,
         invoices: savedInvoices
       },
