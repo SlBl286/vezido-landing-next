@@ -84,16 +84,19 @@ model Specialty {
 }
 
 model Teacher {
-  id          String      @id @default(cuid())
-  userId      String      @unique
-  phone       String?
-  bio         String?
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classes     Class[]     @relation("ClassTeachers")
-  specialties Specialty[]
-  sessions    ClassSession[]
-  tasks           Task[]
-  taskCompletions TaskCompletion[]
+  id               String          @id @default(cuid())
+  userId           String          @unique
+  phone            String?
+  bio              String?
+  ratePerSession   Float?          // Đơn giá mỗi buổi dạy (VNĐ)
+  monthlyAllowance Float?          // Phụ cấp cố định hàng tháng (VNĐ)
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes          Class[]         @relation("ClassTeachers")
+  specialties      Specialty[]
+  sessions         ClassSession[]
+  tasks            Task[]
+  taskCompletions  TaskCompletion[]
+  payrollRecords   PayrollRecord[]
 }
 
 model Class {
@@ -386,3 +389,18 @@ model RecurringHistory {
   expense     Expense?          @relation(fields: [expenseId], references: [id], onDelete: SetNull)
 }
 
+model PayrollRecord {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  month     Int      // Tháng (1-12)
+  year      Int      // Năm
+  bonus     Float    @default(0) // Thưởng
+  penalty   Float    @default(0) // Phạt / Khấu trừ
+  advance   Float    @default(0) // Đã ứng trước
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, month, year])
+}

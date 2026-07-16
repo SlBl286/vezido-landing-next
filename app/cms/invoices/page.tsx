@@ -378,7 +378,7 @@ export default function CMSInvoicesPage() {
     );
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
       // Helper to set column auto-widths
       const autoFitColumns = (worksheet: any, rows: any[]) => {
@@ -462,19 +462,79 @@ export default function CMSInvoicesPage() {
         }
       };
 
+      // Helper: append a styled TOTAL row at the bottom of a worksheet
+      // numericCols: array of column letters that hold numbers to SUM
+      // labelCol: column letter where "TỔNG CỘNG" label is written
+      const appendTotalRow = (
+        worksheet: any,
+        dataLen: number,       // number of data rows (excluding header)
+        numericCols: string[], // e.g. ["I", "K"]
+        labelCol: string,      // e.g. "A"
+        label = "TỔNG CỘNG"
+      ) => {
+        if (dataLen === 0) return;
+        const totalRowNum = dataLen + 2; // row index: 1 header + dataLen data + 1 total
+
+        // Determine max column from !ref
+        const range = worksheet['!ref'] ? XLSX.utils.decode_range(worksheet['!ref']) : null;
+        const maxCol = range ? range.e.c : 12;
+
+        // Write label cell
+        worksheet[`${labelCol}${totalRowNum}`] = { t: 's', v: label };
+
+        // Write SUM formula cells
+        numericCols.forEach(col => {
+          worksheet[`${col}${totalRowNum}`] = {
+            t: 'n',
+            f: `SUM(${col}2:${col}${totalRowNum - 1})`,
+            v: 0,
+            z: '#,##0" đ"'
+          };
+        });
+
+        // Expand !ref to include total row
+        if (range) {
+          range.e.r = totalRowNum - 1;
+          worksheet['!ref'] = XLSX.utils.encode_range(range);
+        }
+
+        // Style the total row – gold background, bold, double bottom border
+        const totalBorder = {
+          top: { style: "medium", color: { rgb: "000000" } },
+          bottom: { style: "double", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
+        };
+        for (let C = 0; C <= maxCol; C++) {
+          const cellRef = XLSX.utils.encode_cell({ r: totalRowNum - 1, c: C });
+          if (!worksheet[cellRef]) worksheet[cellRef] = { t: 's', v: '' };
+          const colLetter = XLSX.utils.encode_col(C);
+          const isNum = numericCols.includes(colLetter);
+          worksheet[cellRef].s = {
+            font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "000000" } },
+            fill: { fgColor: { rgb: "FFD275" } },
+            alignment: { horizontal: isNum ? "right" : "left", vertical: "center" },
+            border: totalBorder
+          };
+        }
+      };
+
       // 1. Prepare Revenue Data
       const revenueRows = filteredInvoicesList.map(inv => ({
+        "Ngày thanh toán": inv.paymentDate ? new Date(inv.paymentDate).toLocaleString("vi-VN") : "N/A",
+        "Mã HĐ": inv.id || "",
         "Mã học sinh": inv.studentCode || "",
         "Tên học sinh": inv.studentName || "",
         "Phụ huynh": inv.parentName || "",
         "Số điện thoại PH": inv.parentPhone || "",
         "Lớp học": inv.className || "",
         "Khóa học": inv.courseTitle || "",
-        "Số tiền nộp (VNĐ)": inv.amountPaid || 0,
+        "Tiền gốc (VNĐ)": inv.originalFee || 0,
+        "Giảm giá %": inv.discountPercent ? `${inv.discountPercent}%` : "0%",
+        "Tiền đóng thực tế (VNĐ)": inv.amountPaid || 0,
         "Phương thức": inv.paymentMethod === "TRANSFER" ? "Chuyển khoản" : 
                        inv.paymentMethod === "CASH" ? "Tiền mặt" : "Trực tuyến",
         "Mã ưu đãi": inv.discountCode || "Không có",
-        "Ngày thanh toán": inv.paymentDate ? new Date(inv.paymentDate).toLocaleString("vi-VN") : "N/A"
       }));
 
       // 2. Prepare Expense Data
@@ -504,21 +564,24 @@ export default function CMSInvoicesPage() {
       }
 
       // 3. Create Summary Data
+      // Column mapping in "Doanh thu học phí" sheet:
+      // A=Ngày thanh toán, B=Mã HĐ, C=Mã HS, D=Tên HS, E=Phụ huynh, F=SDT
+      // G=Lớp học, H=Khóa học, I=Tiền gốc, J=Giảm giá %, K=Tiền đóng TT, L=Phương thức, M=Mã ưu đãi
       const summaryData = [
         [reportTitle],
         [`Ngày xuất báo cáo: ${new Date().toLocaleString("vi-VN")}`],
         [],
         ["Chỉ tiêu", "Giá trị (VNĐ)", "Mô tả"],
-        ["Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!G2:G${revLen})`, v: 0 }, "Tổng số tiền học phí thực tế đã thu nhận"],
+        ["Doanh Thu Học Phí", { f: `SUM('Doanh thu học phí'!K2:K${revLen})`, v: 0 }, "Tổng số tiền học phí thực tế đã thu nhận"],
         ["Doanh Thu Khác", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Thu nhập khác", 'Nhật ký thu chi'!D2:D${expLen})`, v: 0 }, "Các khoản thu nhập khác ngoài học phí"],
         ["Tổng Chi Tiêu Thực Tế", { f: `SUMIF('Nhật ký thu chi'!B2:B${expLen}, "Chi tiêu thực tế", 'Nhật ký thu chi'!D2:D${expLen})`, v: 0 }, "Tổng chi phí vận hành, lương, họa cụ, v.v."],
         ["Lợi Nhuận Thực Tế (Lãi/Lỗ)", { f: "B5+B6-B7", v: 0 }, "Hiệu số giữa Doanh thu và Chi phí"],
         [],
         ["Cơ cấu doanh thu theo phương thức thanh toán:"],
         ["Phương thức", "Số tiền (VNĐ)"],
-        ["Chuyển khoản", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Chuyển khoản", 'Doanh thu học phí'!G2:G${revLen})`, v: 0 }],
-        ["Tiền mặt", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Tiền mặt", 'Doanh thu học phí'!G2:G${revLen})`, v: 0 }],
-        ["Trực tuyến", { f: `SUMIF('Doanh thu học phí'!H2:H${revLen}, "Trực tuyến", 'Doanh thu học phí'!G2:G${revLen})`, v: 0 }],
+        ["Chuyển khoản", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Chuyển khoản", 'Doanh thu học phí'!K2:K${revLen})`, v: 0 }],
+        ["Tiền mặt", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Tiền mặt", 'Doanh thu học phí'!K2:K${revLen})`, v: 0 }],
+        ["Trực tuyến", { f: `SUMIF('Doanh thu học phí'!L2:L${revLen}, "Trực tuyến", 'Doanh thu học phí'!K2:K${revLen})`, v: 0 }],
       ];
 
       // 4. Create Workbook & Sheets
@@ -632,33 +695,226 @@ export default function CMSInvoicesPage() {
       XLSX.utils.book_append_sheet(workbook, worksheetSummary, "Tổng hợp tài chính");
       
       // Sheet 2: Revenue Sheet
+      // Columns: A=Ngày TT, B=Mã HĐ, C=Mã HS, D=Tên HS, E=Phụ huynh, F=SDT,
+      //          G=Lớp, H=Khóa học, I=Tiền gốc, J=Giảm giá %, K=Tiền đóng TT, L=PT, M=Mã ưu đãi
       const revenueHeaders = [
-        "Mã học sinh", "Tên học sinh", "Phụ huynh", "Số điện thoại PH",
-        "Lớp học", "Khóa học", "Số tiền nộp (VNĐ)", "Phương thức",
-        "Mã ưu đãi", "Ngày thanh toán"
+        "Ngày thanh toán", "Mã HĐ", "Mã học sinh", "Tên học sinh", "Phụ huynh",
+        "Số điện thoại PH", "Lớp học", "Khóa học",
+        "Tiền gốc (VNĐ)", "Giảm giá %", "Tiền đóng thực tế (VNĐ)",
+        "Phương thức", "Mã ưu đãi"
       ];
       const worksheetRevenue = revenueRows.length === 0 
         ? XLSX.utils.aoa_to_sheet([revenueHeaders])
         : XLSX.utils.json_to_sheet(revenueRows);
       autoFitColumns(worksheetRevenue, revenueRows);
-      formatCurrencyColumn(worksheetRevenue, "G", 2, revenueRows.length + 1);
+      // Format Tiền gốc (col I) and Tiền đóng thực tế (col K)
+      formatCurrencyColumn(worksheetRevenue, "I", 2, revenueRows.length + 1);
+      formatCurrencyColumn(worksheetRevenue, "K", 2, revenueRows.length + 1);
       styleJsonSheet(worksheetRevenue, "A8E6CF"); // Mint Green headers
+      appendTotalRow(worksheetRevenue, revenueRows.length, ["I", "K"], "A");
       XLSX.utils.book_append_sheet(workbook, worksheetRevenue, "Doanh thu học phí");
 
-      // Sheet 3: Expense Sheet
+      // Sheet 3: Master Expense Sheet (tất cả danh mục)
       const expenseHeaders = [
-        "Nội dung giao dịch", "Loại giao dịch", "Danh mục", "Số tiền (VNĐ)",
-        "Ngày giao dịch", "Mô tả / Chi tiết", "Loại ghi nhận"
+        "Ngày giao dịch", "Nội dung giao dịch", "Loại giao dịch", "Danh mục",
+        "Số tiền (VNĐ)", "Mô tả / Chi tiết", "Loại ghi nhận"
       ];
-      const worksheetExpense = expenseRows.length === 0
+
+      // Re-map with Ngày giao dịch first for consistency
+      const expenseRowsOrdered = filteredExpensesList.map(exp => ({
+        "Ngày giao dịch": exp.date ? new Date(exp.date).toLocaleDateString("vi-VN") : "N/A",
+        "Nội dung giao dịch": exp.title || "",
+        "Loại giao dịch": exp.type === "REVENUE" ? "Thu nhập khác" : "Chi tiêu thực tế",
+        "Danh mục": exp.category || "Khác",
+        "Số tiền (VNĐ)": exp.amount || 0,
+        "Mô tả / Chi tiết": exp.description || "",
+        "Loại ghi nhận": exp.isReadOnly ? "Tự động" : "Thủ công"
+      }));
+
+      const worksheetExpense = expenseRowsOrdered.length === 0
         ? XLSX.utils.aoa_to_sheet([expenseHeaders])
-        : XLSX.utils.json_to_sheet(expenseRows);
-      autoFitColumns(worksheetExpense, expenseRows);
-      formatCurrencyColumn(worksheetExpense, "D", 2, expenseRows.length + 1);
+        : XLSX.utils.json_to_sheet(expenseRowsOrdered);
+      autoFitColumns(worksheetExpense, expenseRowsOrdered);
+      formatCurrencyColumn(worksheetExpense, "E", 2, expenseRowsOrdered.length + 1);
       styleJsonSheet(worksheetExpense, "FFAAA6"); // Light Pink/Rose headers
+      appendTotalRow(worksheetExpense, expenseRowsOrdered.length, ["E"], "A");
       XLSX.utils.book_append_sheet(workbook, worksheetExpense, "Nhật ký thu chi");
 
-      // 5. Write Excel File
+      // Sheet 4+: One sheet per category
+      // Group expenses by category
+      const expensesByCategory: Record<string, typeof expenseRowsOrdered> = {};
+      expenseRowsOrdered.forEach(row => {
+        const cat = row["Danh mục"] || "Khác";
+        if (!expensesByCategory[cat]) expensesByCategory[cat] = [];
+        expensesByCategory[cat].push(row);
+      });
+
+      // Color palette for category sheets (cycle through)
+      const categoryColors = [
+        "FFAAA6", // Rose
+        "FFD3B6", // Peach
+        "FFD275", // Gold
+        "A8E6CF", // Mint
+        "BAE1FF", // Sky Blue
+        "D4B8FF", // Lavender
+        "FFF9A6", // Lemon
+        "B8F0E6", // Teal
+      ];
+
+      const sortedCategories = Object.keys(expensesByCategory).sort();
+      sortedCategories.forEach((category, idx) => {
+        const catRows = expensesByCategory[category];
+        // Excel sheet name: max 31 chars, strip invalid chars [ ] : * ? / \
+        const rawName = `Chi - ${category}`;
+        const safeName = rawName.replace(/[\[\]:*?/\\]/g, "").substring(0, 31);
+
+        const wsCat = catRows.length === 0
+          ? XLSX.utils.aoa_to_sheet([expenseHeaders])
+          : XLSX.utils.json_to_sheet(catRows);
+        autoFitColumns(wsCat, catRows);
+        formatCurrencyColumn(wsCat, "E", 2, catRows.length + 1);
+        styleJsonSheet(wsCat, categoryColors[idx % categoryColors.length]);
+        appendTotalRow(wsCat, catRows.length, ["E"], "A");
+        XLSX.utils.book_append_sheet(workbook, wsCat, safeName);
+      });
+
+      // 5. Sheet: Bảng lương giáo viên
+      // Fetch payroll data (giáo viên + số buổi + payroll record) từ API
+      let payrollTeachers: any[] = [];
+      try {
+        const payrollParams = new URLSearchParams();
+        if (filterMonth !== "ALL") payrollParams.set("month", filterMonth);
+        if (filterYear !== "ALL") payrollParams.set("year", filterYear);
+        const payrollRes = await fetch(`/api/cms/payroll?${payrollParams.toString()}`);
+        if (payrollRes.ok) {
+          const payrollData = await payrollRes.json();
+          payrollTeachers = payrollData.teachers || [];
+        }
+      } catch (e) {
+        console.warn("Could not fetch payroll data:", e);
+      }
+
+      // Build payroll rows
+      // Columns: A=Họ tên, B=Chức vụ, C=Số buổi, D=Đơn giá/buổi,
+      //          E=Phụ cấp, F=Thưởng, G=Phạt, H=Tổng lương, I=Đã ứng, J=Thực nhận
+      const payrollDataRows = payrollTeachers.map(t => ({
+        "Họ tên": t.name || "",
+        "Chức vụ": t.role === "TEACHER" ? "Giáo viên" : t.role === "ASSISTANT" ? "Trợ giảng" : "Hành chính",
+        "Số buổi": t.sessionCount || 0,
+        "Đơn giá/buổi (VNĐ)": t.ratePerSession || 0,
+        "Phụ cấp (VNĐ)": t.monthlyAllowance || 0,
+        "Thưởng (VNĐ)": t.payroll?.bonus || 0,
+        "Phạt (VNĐ)": t.payroll?.penalty || 0,
+        "Tổng lương (VNĐ)": 0, // Will be replaced by formula
+        "Đã ứng (VNĐ)": t.payroll?.advance || 0,
+        "Thực nhận (VNĐ)": 0, // Will be replaced by formula
+      }));
+
+      const payrollHeaders = [
+        "Họ tên", "Chức vụ", "Số buổi", "Đơn giá/buổi (VNĐ)",
+        "Phụ cấp (VNĐ)", "Thưởng (VNĐ)", "Phạt (VNĐ)",
+        "Tổng lương (VNĐ)", "Đã ứng (VNĐ)", "Thực nhận (VNĐ)"
+      ];
+
+      const worksheetPayroll = payrollDataRows.length === 0
+        ? XLSX.utils.aoa_to_sheet([payrollHeaders])
+        : XLSX.utils.json_to_sheet(payrollDataRows);
+
+      // Inject Excel formulas for Tổng lương (H) and Thực nhận (J)
+      // H = C*D + E + F - G  (Số buổi * Đơn giá + Phụ cấp + Thưởng - Phạt)
+      // J = H - I
+      payrollDataRows.forEach((_, idx) => {
+        const row = idx + 2; // row 1 = header
+        worksheetPayroll[`H${row}`] = { t: "n", f: `C${row}*D${row}+E${row}+F${row}-G${row}`, v: 0, z: '#,##0" đ"' };
+        worksheetPayroll[`J${row}`] = { t: "n", f: `H${row}-I${row}`, v: 0, z: '#,##0" đ"' };
+      });
+
+      // Format currency columns: D, E, F, G, H, I, J
+      ["D", "E", "F", "G", "I"].forEach(col => {
+        formatCurrencyColumn(worksheetPayroll, col, 2, payrollDataRows.length + 1);
+      });
+
+      autoFitColumns(worksheetPayroll, payrollDataRows);
+      styleJsonSheet(worksheetPayroll, "FFD275"); // Gold header for payroll sheet
+
+      // Add TOTAL row for payroll sheet
+      if (payrollDataRows.length > 0) {
+        appendTotalRow(worksheetPayroll, payrollDataRows.length, ["E", "F", "G", "H", "I", "J"], "A");
+      }
+
+      // Add summary section below total row
+      if (payrollDataRows.length > 0) {
+        const totalRow = payrollDataRows.length + 2; // header + data + total
+        const summaryStartRow = totalRow + 2; // blank row gap
+
+        const summaryBorder = {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
+        };
+
+        const summaryItems = [
+          { label: "Tổng lương giáo viên", formula: `SUMIF(B2:B${totalRow - 1},"Giáo viên",H2:H${totalRow - 1})`, fill: "E8F5E9" },
+          { label: "Tổng lương trợ giảng", formula: `SUMIF(B2:B${totalRow - 1},"Trợ giảng",H2:H${totalRow - 1})`, fill: "E8F5E9" },
+          { label: "Tổng lương hành chính", formula: `SUMIF(B2:B${totalRow - 1},"Hành chính",H2:H${totalRow - 1})`, fill: "E8F5E9" },
+          { label: "Tổng phụ cấp", formula: `SUM(E2:E${totalRow - 1})`, fill: "FFF9ED" },
+          { label: "Tổng thưởng", formula: `SUM(F2:F${totalRow - 1})`, fill: "FFF9ED" },
+          { label: "Tổng khấu trừ (phạt)", formula: `SUM(G2:G${totalRow - 1})`, fill: "FFEBEE" },
+          { label: "Tổng chi phí lương", formula: `SUM(H2:H${totalRow - 1})`, fill: "FFD275", bold: true },
+        ];
+
+        summaryItems.forEach((item, i) => {
+          const r = summaryStartRow + i;
+          // Label in A
+          worksheetPayroll[`A${r}`] = {
+            t: "s", v: item.label,
+            s: {
+              font: { name: "Segoe UI", sz: 11, bold: !!item.bold, color: { rgb: "000000" } },
+              fill: { fgColor: { rgb: item.fill } },
+              alignment: { horizontal: "left", vertical: "center" },
+              border: summaryBorder
+            }
+          };
+          // Value formula in B
+          worksheetPayroll[`B${r}`] = {
+            t: "n", f: item.formula, v: 0, z: '#,##0" đ"',
+            s: {
+              font: { name: "Segoe UI", sz: 11, bold: !!item.bold, color: { rgb: "000000" } },
+              fill: { fgColor: { rgb: item.fill } },
+              alignment: { horizontal: "right", vertical: "center" },
+              border: summaryBorder
+            }
+          };
+          // Fill C-J with empty styled cells
+          for (let c = 2; c <= 9; c++) {
+            const cellRef = XLSX.utils.encode_cell({ r: r - 1, c });
+            worksheetPayroll[cellRef] = {
+              t: "s", v: "",
+              s: {
+                fill: { fgColor: { rgb: item.fill } },
+                border: summaryBorder
+              }
+            };
+          }
+        });
+
+        // Expand !ref to include summary rows
+        const payrollRange = XLSX.utils.decode_range(worksheetPayroll['!ref'] || "A1:J2");
+        payrollRange.e.r = summaryStartRow + summaryItems.length - 2;
+        worksheetPayroll['!ref'] = XLSX.utils.encode_range(payrollRange);
+
+        // Merge A col for summary label cells (A spans wider)
+        if (!worksheetPayroll['!merges']) worksheetPayroll['!merges'] = [];
+        summaryItems.forEach((_, i) => {
+          const r = summaryStartRow + i - 1; // 0-indexed
+          worksheetPayroll['!merges']!.push({ s: { r, c: 0 }, e: { r, c: 0 } }); // just A, no merge needed since B has value
+        });
+      }
+
+      XLSX.utils.book_append_sheet(workbook, worksheetPayroll, "Bảng lương");
+
+      // 6. Write Excel File
       XLSX.writeFile(workbook, `Bao_cao_thu_chi_Vezido_${new Date().toISOString().split("T")[0]}.xlsx`);
       showNotification("Thành công 🎉", "Xuất file Excel báo cáo thu chi thành công.", "success");
     } catch (err: any) {

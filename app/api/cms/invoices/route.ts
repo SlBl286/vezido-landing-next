@@ -196,20 +196,34 @@ export async function GET() {
       }));
 
     return NextResponse.json({
-      invoices: paidStudents.map((s) => ({
-        id: s.id,
-        studentName: s.studentName,
-        studentCode: s.studentCode,
-        parentName: s.parentName,
-        parentPhone: s.parentPhone,
-        className: s.class?.name,
-        courseTitle: s.class?.course?.title || "Không có liên kết",
-        amountPaid: s.amountPaid,
-        discountCode: s.discountCode,
-        paymentDate: s.paymentDate,
-        paymentMethod: s.paymentMethod,
-        paymentProof: s.paymentProof,
-      })),
+      invoices: paidStudents.map((s) => {
+        const sessions = s.customDuration !== null && s.customDuration !== undefined
+          ? Number(s.customDuration)
+          : (parseInt(s.class?.course?.duration || "0", 10) || 0);
+        const feePerSession = s.class?.course?.fee || 0;
+        const originalFee = sessions * feePerSession;
+        const amountPaid = s.amountPaid || 0;
+        const discountAmount = Math.max(0, originalFee - amountPaid);
+        const discountPercent = originalFee > 0 ? Math.round((discountAmount / originalFee) * 100 * 10) / 10 : 0;
+
+        return {
+          id: s.id,
+          studentName: s.studentName,
+          studentCode: s.studentCode,
+          parentName: s.parentName,
+          parentPhone: s.parentPhone,
+          className: s.class?.name,
+          courseTitle: s.class?.course?.title || "Không có liên kết",
+          originalFee,
+          discountAmount,
+          discountPercent,
+          amountPaid: s.amountPaid,
+          discountCode: s.discountCode,
+          paymentDate: s.paymentDate,
+          paymentMethod: s.paymentMethod,
+          paymentProof: s.paymentProof,
+        };
+      }),
       expenses: allExpenses,
       stats: {
         totalRevenue,
