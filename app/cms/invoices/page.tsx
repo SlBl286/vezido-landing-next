@@ -6,6 +6,7 @@ import { cmsApi } from "@/lib/api-client";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
+import { CustomDateRangePicker } from "@/app/cms/components/ui/custom-daterange-picker";
 import * as XLSX from "xlsx-js-style";
 
 export default function CMSInvoicesPage() {
@@ -24,9 +25,18 @@ export default function CMSInvoicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [session, setSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"REVENUE" | "EXPENSE">("REVENUE");
-  // Month & Year Filter states
-  const [filterMonth, setFilterMonth] = useState<string>("ALL");
-  const [filterYear, setFilterYear] = useState<string>("ALL");
+  // Dynamic filter states
+  const [filterType, setFilterType] = useState<"ALL" | "YEAR" | "QUARTER" | "MONTH" | "RANGE">("MONTH");
+  const [selectedYear, setSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
+  const [selectedQuarter, setSelectedQuarter] = useState<string>(() => {
+    const q = Math.floor(new Date().getMonth() / 3) + 1;
+    return q.toString();
+  });
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => (new Date().getMonth() + 1).toString());
+  const [selectedRange, setSelectedRange] = useState<{ start: Date | null; end: Date | null }>({
+    start: null,
+    end: null,
+  });
 
   // Expense categories states
   const [categories, setCategories] = useState<any[]>([]);
@@ -577,16 +587,55 @@ export default function CMSInvoicesPage() {
       const revLen = Math.max(2, revenueRows.length + 1);
       const expLen = Math.max(2, expenseRows.length + 1);
 
-      // Construct dynamic title based on filters
+      const formatDateStr = (d: Date | null) => {
+        if (!d) return "";
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      const formatDateForFilename = (d: Date | null) => {
+        if (!d) return "";
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+      };
+
       let reportTitle = "BÁO CÁO TÀI CHÍNH TỔNG HỢP";
-      if (filterYear !== "ALL" && filterMonth !== "ALL") {
-        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - THÁNG ${filterMonth}/${filterYear}`;
-      } else if (filterYear !== "ALL") {
-        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - NĂM ${filterYear}`;
-      } else if (filterMonth !== "ALL") {
-        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - THÁNG ${filterMonth} (TẤT CẢ CÁC NĂM)`;
-      } else {
-        reportTitle = "BÁO CÁO TÀI CHÍNH TỔNG HỢP - TOÀN BỘ THỜI GIAN";
+      let fileSuffix = "Toan_bo_thoi_gian";
+
+      if (filterType === "YEAR") {
+        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - NĂM ${selectedYear}`;
+        fileSuffix = `Nam_${selectedYear}`;
+      } else if (filterType === "QUARTER") {
+        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - QUÝ ${selectedQuarter} NĂM ${selectedYear}`;
+        fileSuffix = `Q${selectedQuarter}_Nam_${selectedYear}`;
+      } else if (filterType === "MONTH") {
+        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - THÁNG ${selectedMonth}/${selectedYear}`;
+        fileSuffix = `Thang_${selectedMonth}_Nam_${selectedYear}`;
+      } else if (filterType === "RANGE") {
+        const startStr = formatDateStr(selectedRange.start);
+        const endStr = selectedRange.end ? formatDateStr(selectedRange.end) : "";
+        reportTitle = `BÁO CÁO TÀI CHÍNH TỔNG HỢP - KHOẢNG THỜI GIAN ${startStr}${endStr ? ` ĐẾN ${endStr}` : ""}`;
+        
+        const startFile = formatDateForFilename(selectedRange.start);
+        const endFile = selectedRange.end ? formatDateForFilename(selectedRange.end) : "nay";
+        fileSuffix = `Tu_${startFile}_Den_${endFile}`;
+      }
+
+      let isDailyBreakdown = false;
+      if (filterType === "MONTH") {
+        isDailyBreakdown = true;
+      } else if (filterType === "RANGE") {
+        if (selectedRange.start && selectedRange.end) {
+          const diffMs = selectedRange.end.getTime() - selectedRange.start.getTime();
+          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          isDailyBreakdown = diffDays <= 45;
+        } else {
+          isDailyBreakdown = true;
+        }
       }
 
       // 3. Calculate actual values for Sheet 1 (Summary)
@@ -684,7 +733,8 @@ export default function CMSInvoicesPage() {
 
       // Row 16: Chart Title
       const monthlyHeaderIndex = summaryData.length;
-      summaryData.push(["THỐNG KÊ THU CHI HÀNG THÁNG"]);
+      const chartTitle = isDailyBreakdown ? "THỐNG KÊ THU CHI HÀNG NGÀY" : "THỐNG KÊ THU CHI HÀNG THÁNG";
+      summaryData.push([chartTitle]);
 
       // Rows 17 to 26: Chart bars
       const chartStartIndex = summaryData.length;
@@ -766,28 +816,11 @@ export default function CMSInvoicesPage() {
       // Sheet 1: Summary Sheet
       const worksheetSummary = XLSX.utils.aoa_to_sheet(summaryData);
       
-      const colWidths = [
-        { wch: 12 }, // Col A
-        { wch: 6 },  // Col B
-        { wch: 6 },  // Col C
-        { wch: 6 },  // Col D
-        { wch: 6 },  // Col E
-        { wch: 6 },  // Col F
-        { wch: 6 },  // Col G
-        { wch: 6 },  // Col H
-        { wch: 6 },  // Col I
-        { wch: 6 },  // Col J
-        { wch: 6 },  // Col K
-        { wch: 6 },  // Col L
-        { wch: 6 },  // Col M
-        { wch: 6 },  // Col N
-        { wch: 6 },  // Col O
-        { wch: 6 },  // Col P
-        { wch: 6 },  // Col Q
-        { wch: 6 },  // Col R
-        { wch: 6 },  // Col S
-        { wch: 6 },  // Col T
-      ];
+      const maxColIdx = Math.max(18, 1 + months.length * 3);
+      const numCols = Math.max(20, 2 + months.length * 3);
+      const colWidths = Array.from({ length: numCols }, (_, i) => ({
+        wch: i === 0 ? 12 : 6
+      }));
       worksheetSummary['!cols'] = colWidths;
 
       // Format currency fields in Summary Sheet
@@ -811,26 +844,26 @@ export default function CMSInvoicesPage() {
 
       // Merge headers/subtitles/data across columns to avoid clashes
       const merges: any[] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 18 } }, // Title
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 18 } }, // Date
+        { s: { r: 0, c: 0 }, e: { r: 0, c: maxColIdx } }, // Title
+        { s: { r: 1, c: 0 }, e: { r: 1, c: maxColIdx } }, // Date
       ];
 
       // Left Table Merges
       for (let r = 3; r <= 7; r++) {
         merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
         merges.push({ s: { r, c: 3 }, e: { r, c: 5 } });
-        merges.push({ s: { r, c: 6 }, e: { r, c: 18 } });
+        merges.push({ s: { r, c: 6 }, e: { r, c: maxColIdx } });
       }
 
       // Payment Table Merges
-      merges.push({ s: { r: 9, c: 0 }, e: { r: 9, c: 18 } });
+      merges.push({ s: { r: 9, c: 0 }, e: { r: 9, c: maxColIdx } });
       for (let r = 10; r <= 13; r++) {
         merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
         merges.push({ s: { r, c: 3 }, e: { r, c: 5 } });
       }
 
       // Chart Section merges
-      merges.push({ s: { r: monthlyHeaderIndex, c: 0 }, e: { r: monthlyHeaderIndex, c: 18 } });
+      merges.push({ s: { r: monthlyHeaderIndex, c: 0 }, e: { r: monthlyHeaderIndex, c: maxColIdx } });
       months.forEach((_, mIdx) => {
         merges.push({
           s: { r: monthLabelRowIndex, c: 1 + mIdx * 3 },
@@ -839,18 +872,18 @@ export default function CMSInvoicesPage() {
       });
 
       // Category Section merges
-      merges.push({ s: { r: categoryHeaderIndex, c: 0 }, e: { r: categoryHeaderIndex, c: 18 } });
+      merges.push({ s: { r: categoryHeaderIndex, c: 0 }, e: { r: categoryHeaderIndex, c: maxColIdx } });
       // Header merges
       merges.push({ s: { r: categoryTableHeadIndex, c: 0 }, e: { r: categoryTableHeadIndex, c: 2 } });
       merges.push({ s: { r: categoryTableHeadIndex, c: 3 }, e: { r: categoryTableHeadIndex, c: 5 } });
       merges.push({ s: { r: categoryTableHeadIndex, c: 6 }, e: { r: categoryTableHeadIndex, c: 7 } });
-      merges.push({ s: { r: categoryTableHeadIndex, c: 8 }, e: { r: categoryTableHeadIndex, c: 18 } });
+      merges.push({ s: { r: categoryTableHeadIndex, c: 8 }, e: { r: categoryTableHeadIndex, c: maxColIdx } });
       // Row merges
       for (let r = categoryStartIndex; r < categoryEndIndex; r++) {
         merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
         merges.push({ s: { r, c: 3 }, e: { r, c: 5 } });
         merges.push({ s: { r, c: 6 }, e: { r, c: 7 } });
-        merges.push({ s: { r, c: 8 }, e: { r, c: 18 } });
+        merges.push({ s: { r, c: 8 }, e: { r, c: maxColIdx } });
       }
       worksheetSummary['!merges'] = merges;
 
@@ -866,10 +899,10 @@ export default function CMSInvoicesPage() {
           const isCatTableRow = R >= categoryStartIndex && R < categoryEndIndex;
           const isCatHeaderRow = R === categoryTableHeadIndex;
           
-          const isTableArea = (isLeftTable1Row && C <= 18) || 
+          const isTableArea = (isLeftTable1Row && C <= maxColIdx) || 
                               (isLeftTable2Row && C <= 5) || 
-                              (isCatTableRow && C <= 18) || 
-                              (isCatHeaderRow && C <= 18);
+                              (isCatTableRow && C <= maxColIdx) || 
+                              (isCatHeaderRow && C <= maxColIdx);
           
           let cell = worksheetSummary[cellRef];
           if (!cell && isTableArea) {
@@ -890,7 +923,7 @@ export default function CMSInvoicesPage() {
             cell.s = {
               font: { name: "Segoe UI", sz: 9.5, italic: true, color: { rgb: "666666" } }
             };
-          } else if (R === 3 && C <= 18) {
+          } else if (R === 3 && C <= maxColIdx) {
             // Main table header style
             cell.s = {
               font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "000000" } },
@@ -1018,7 +1051,7 @@ export default function CMSInvoicesPage() {
               font: { name: "Segoe UI", sz: 12, bold: true, color: { rgb: "000000" } },
               alignment: { horizontal: "left", vertical: "center" }
             };
-          } else if (R === categoryTableHeadIndex && C <= 18) {
+          } else if (R === categoryTableHeadIndex && C <= maxColIdx) {
             cell.s = {
               font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: "000000" } },
               fill: { fgColor: { rgb: "FFEBEE" } },
@@ -1131,12 +1164,60 @@ export default function CMSInvoicesPage() {
       let payrollTeachers: any[] = [];
       try {
         const payrollParams = new URLSearchParams();
-        if (filterMonth !== "ALL") payrollParams.set("month", filterMonth);
-        if (filterYear !== "ALL") payrollParams.set("year", filterYear);
+        if (filterType === "MONTH") {
+          payrollParams.set("month", selectedMonth);
+          payrollParams.set("year", selectedYear);
+        } else if (filterType === "YEAR") {
+          payrollParams.set("year", selectedYear);
+        } else if (filterType === "QUARTER") {
+          payrollParams.set("year", selectedYear);
+        } else if (filterType === "RANGE" && selectedRange.start) {
+          payrollParams.set("year", selectedRange.start.getFullYear().toString());
+        }
         const payrollRes = await fetch(`/api/cms/payroll?${payrollParams.toString()}`);
         if (payrollRes.ok) {
           const payrollData = await payrollRes.json();
-          payrollTeachers = payrollData.teachers || [];
+          const rawTeachers = payrollData.teachers || [];
+          
+          if (filterType === "QUARTER") {
+            const quarter = parseInt(selectedQuarter);
+            const startMonth = (quarter - 1) * 3; // 0-indexed Q1=0,1,2; Q2=3,4,5...
+            const endMonth = startMonth + 2;
+            
+            payrollTeachers = rawTeachers.map((t: any) => {
+              const qSessions = (t.sessions || []).filter((s: any) => {
+                const sDate = new Date(s.date);
+                return sDate.getFullYear().toString() === selectedYear &&
+                       sDate.getMonth() >= startMonth &&
+                       sDate.getMonth() <= endMonth;
+              });
+              return {
+                ...t,
+                sessionCount: qSessions.length,
+                sessions: qSessions
+              };
+            });
+          } else if (filterType === "RANGE" && selectedRange.start) {
+            const start = new Date(selectedRange.start.getFullYear(), selectedRange.start.getMonth(), selectedRange.start.getDate()).getTime();
+            const end = selectedRange.end 
+              ? new Date(selectedRange.end.getFullYear(), selectedRange.end.getMonth(), selectedRange.end.getDate()).getTime()
+              : start;
+              
+            payrollTeachers = rawTeachers.map((t: any) => {
+              const rSessions = (t.sessions || []).filter((s: any) => {
+                const sDate = new Date(s.date);
+                const sTime = new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate()).getTime();
+                return sTime >= start && sTime <= end;
+              });
+              return {
+                ...t,
+                sessionCount: rSessions.length,
+                sessions: rSessions
+              };
+            });
+          } else {
+            payrollTeachers = rawTeachers;
+          }
         }
       } catch (e) {
         console.warn("Could not fetch payroll data:", e);
@@ -1303,7 +1384,7 @@ export default function CMSInvoicesPage() {
       XLSX.utils.book_append_sheet(workbook, worksheetPayroll, "Bảng lương");
 
       // 6. Write Excel File
-      XLSX.writeFile(workbook, `Bao_cao_thu_chi_Vezido_${new Date().toISOString().split("T")[0]}.xlsx`);
+      XLSX.writeFile(workbook, `Bao_cao_thu_chi_Vezido_${fileSuffix}.xlsx`);
       showNotification("Thành công 🎉", "Xuất file Excel báo cáo thu chi thành công.", "success");
     } catch (err: any) {
       showNotification("Lỗi xuất file", err.message || "Không thể xuất file Excel.", "error");
@@ -1331,27 +1412,137 @@ export default function CMSInvoicesPage() {
 
   // Filter lists and calculate stats dynamically
   const { filteredInvoicesList, filteredExpensesList, filteredStats } = useMemo(() => {
-    const filteredInvs = invoices.filter(inv => {
-      if (!inv.paymentDate) return false;
-      const d = new Date(inv.paymentDate);
-      const yMatch = filterYear === "ALL" || d.getFullYear().toString() === filterYear;
-      const mMatch = filterMonth === "ALL" || (d.getMonth() + 1).toString() === filterMonth;
-      return yMatch && mMatch;
-    });
+    const checkDateMatch = (dateStr: string | Date | null | undefined) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      
+      switch (filterType) {
+        case "ALL":
+          return true;
+        case "YEAR":
+          return d.getFullYear().toString() === selectedYear;
+        case "QUARTER": {
+          const yearMatch = d.getFullYear().toString() === selectedYear;
+          const q = Math.floor(d.getMonth() / 3) + 1; // 1 to 4
+          return yearMatch && q.toString() === selectedQuarter;
+        }
+        case "MONTH": {
+          const yearMatch = d.getFullYear().toString() === selectedYear;
+          const monthMatch = (d.getMonth() + 1).toString() === selectedMonth;
+          return yearMatch && monthMatch;
+        }
+        case "RANGE": {
+          if (!selectedRange.start) return true;
+          // Set start to midnight
+          const start = new Date(selectedRange.start.getFullYear(), selectedRange.start.getMonth(), selectedRange.start.getDate()).getTime();
+          // Set dTime to midnight
+          const dTime = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+          if (selectedRange.end) {
+            const end = new Date(selectedRange.end.getFullYear(), selectedRange.end.getMonth(), selectedRange.end.getDate()).getTime();
+            return dTime >= start && dTime <= end;
+          }
+          return dTime >= start;
+        }
+        default:
+          return true;
+      }
+    };
 
-    const filteredExps = expenses.filter(exp => {
-      if (!exp.date) return false;
-      const d = new Date(exp.date);
-      const yMatch = filterYear === "ALL" || d.getFullYear().toString() === filterYear;
-      const mMatch = filterMonth === "ALL" || (d.getMonth() + 1).toString() === filterMonth;
-      return yMatch && mMatch;
-    });
+    const filteredInvs = invoices.filter(inv => checkDateMatch(inv.paymentDate));
+    const filteredExps = expenses.filter(exp => checkDateMatch(exp.date));
+
+    // Determine whether to use daily or monthly chart breakdown
+    let isDailyBreakdown = false;
+    if (filterType === "MONTH") {
+      isDailyBreakdown = true;
+    } else if (filterType === "RANGE") {
+      if (selectedRange.start && selectedRange.end) {
+        const diffMs = selectedRange.end.getTime() - selectedRange.start.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        isDailyBreakdown = diffDays <= 45;
+      } else {
+        isDailyBreakdown = true; // default to daily for single/empty select
+      }
+    }
+
+    const timeBreakdown: Record<string, { label: string; revenue: number; expense: number; profit: number }> = {};
+
+    const formatDateKey = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+
+    const formatMonthKey = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      return `${y}-${m}`;
+    };
+
+    // Pre-populate time intervals for uniform chart display
+    if (isDailyBreakdown) {
+      if (filterType === "MONTH") {
+        const year = parseInt(selectedYear);
+        const monthIndex = parseInt(selectedMonth) - 1;
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const date = new Date(year, monthIndex, d);
+          const key = formatDateKey(date);
+          timeBreakdown[key] = {
+            label: `${d}/${monthIndex + 1}`,
+            revenue: 0,
+            expense: 0,
+            profit: 0
+          };
+        }
+      } else if (filterType === "RANGE" && selectedRange.start) {
+        const start = new Date(selectedRange.start);
+        const end = selectedRange.end ? new Date(selectedRange.end) : new Date(start);
+        const current = new Date(start);
+        let safetyCount = 0;
+        while (current <= end && safetyCount < 50) {
+          const key = formatDateKey(current);
+          timeBreakdown[key] = {
+            label: `${current.getDate()}/${current.getMonth() + 1}`,
+            revenue: 0,
+            expense: 0,
+            profit: 0
+          };
+          current.setDate(current.getDate() + 1);
+          safetyCount++;
+        }
+      }
+    } else {
+      // Monthly breakdown pre-population
+      if (filterType === "YEAR") {
+        for (let m = 1; m <= 12; m++) {
+          const key = `${selectedYear}-${String(m).padStart(2, "0")}`;
+          timeBreakdown[key] = {
+            label: `Tháng ${m}/${selectedYear}`,
+            revenue: 0,
+            expense: 0,
+            profit: 0
+          };
+        }
+      } else if (filterType === "QUARTER") {
+        const startMonth = (parseInt(selectedQuarter) - 1) * 3 + 1;
+        for (let m = startMonth; m < startMonth + 3; m++) {
+          const key = `${selectedYear}-${String(m).padStart(2, "0")}`;
+          timeBreakdown[key] = {
+            label: `Tháng ${m}/${selectedYear}`,
+            revenue: 0,
+            expense: 0,
+            profit: 0
+          };
+        }
+      }
+    }
 
     let totalRevenue = 0;
     let totalExpense = 0;
     const courseBreakdown: Record<string, { title: string; count: number; revenue: number }> = {};
     const expenseCategoryBreakdown: Record<string, { category: string; revenue: number }> = {};
-    const monthlyBreakdown: Record<string, { label: string; revenue: number; expense: number; profit: number }> = {};
 
     filteredInvs.forEach((inv) => {
       const amount = inv.amountPaid || 0;
@@ -1366,12 +1557,15 @@ export default function CMSInvoicesPage() {
       courseBreakdown[courseId].revenue += amount;
 
       const payDate = new Date(inv.paymentDate);
-      const monthKey = `${payDate.getFullYear()}-${String(payDate.getMonth() + 1).padStart(2, "0")}`;
-      const monthLabel = `Tháng ${payDate.getMonth() + 1}/${payDate.getFullYear()}`;
-      if (!monthlyBreakdown[monthKey]) {
-        monthlyBreakdown[monthKey] = { label: monthLabel, revenue: 0, expense: 0, profit: 0 };
+      const key = isDailyBreakdown ? formatDateKey(payDate) : formatMonthKey(payDate);
+      const label = isDailyBreakdown 
+        ? `${payDate.getDate()}/${payDate.getMonth() + 1}`
+        : `Tháng ${payDate.getMonth() + 1}/${payDate.getFullYear()}`;
+
+      if (!timeBreakdown[key]) {
+        timeBreakdown[key] = { label, revenue: 0, expense: 0, profit: 0 };
       }
-      monthlyBreakdown[monthKey].revenue += amount;
+      timeBreakdown[key].revenue += amount;
     });
 
     filteredExps.forEach((exp) => {
@@ -1393,26 +1587,29 @@ export default function CMSInvoicesPage() {
       }
 
       const expDate = new Date(exp.date);
-      const monthKey = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, "0")}`;
-      const monthLabel = `Tháng ${expDate.getMonth() + 1}/${expDate.getFullYear()}`;
-      if (!monthlyBreakdown[monthKey]) {
-        monthlyBreakdown[monthKey] = { label: monthLabel, revenue: 0, expense: 0, profit: 0 };
+      const key = isDailyBreakdown ? formatDateKey(expDate) : formatMonthKey(expDate);
+      const label = isDailyBreakdown 
+        ? `${expDate.getDate()}/${expDate.getMonth() + 1}`
+        : `Tháng ${expDate.getMonth() + 1}/${expDate.getFullYear()}`;
+
+      if (!timeBreakdown[key]) {
+        timeBreakdown[key] = { label, revenue: 0, expense: 0, profit: 0 };
       }
       
       if (isRevenue) {
-        monthlyBreakdown[monthKey].revenue += amount;
+        timeBreakdown[key].revenue += amount;
       } else {
-        monthlyBreakdown[monthKey].expense += amount;
+        timeBreakdown[key].expense += amount;
       }
     });
 
-    Object.keys(monthlyBreakdown).forEach((monthKey) => {
-      monthlyBreakdown[monthKey].profit = monthlyBreakdown[monthKey].revenue - monthlyBreakdown[monthKey].expense;
+    Object.keys(timeBreakdown).forEach((key) => {
+      timeBreakdown[key].profit = timeBreakdown[key].revenue - timeBreakdown[key].expense;
     });
 
     const courses = Object.values(courseBreakdown).sort((a, b) => b.revenue - a.revenue);
     const expenseCategories = Object.values(expenseCategoryBreakdown).sort((a, b) => b.revenue - a.revenue);
-    const months = Object.entries(monthlyBreakdown)
+    const months = Object.entries(timeBreakdown)
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([key, value]) => ({ key, ...value }));
 
@@ -1429,7 +1626,7 @@ export default function CMSInvoicesPage() {
         months
       }
     };
-  }, [invoices, expenses, filterMonth, filterYear]);
+  }, [invoices, expenses, filterType, selectedYear, selectedQuarter, selectedMonth, selectedRange]);
 
   // Filters based on search term
   const filteredInvoices = filteredInvoicesList.filter((inv) => {
@@ -1516,32 +1713,72 @@ export default function CMSInvoicesPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white border-4 border-black rounded-3xl p-5 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
         <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto">
           <span className="font-black text-xs text-black shrink-0 w-full sm:w-auto">📅 Lọc thời gian:</span>
-          <div className="flex items-center gap-2 w-full sm:w-auto flex-1 sm:flex-initial">
-            <div className="flex-1 sm:w-36 sm:flex-initial">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto flex-1 sm:flex-initial">
+            <div className="w-full sm:w-44">
               <CustomSelect
-                value={filterYear}
-                onChange={val => setFilterYear(val)}
+                value={filterType}
+                onChange={(val: any) => setFilterType(val)}
                 options={[
-                  { value: "ALL", label: "Tất cả các năm" },
-                  ...availableYears.map(y => ({ value: y, label: `Năm ${y}` }))
+                  { value: "ALL", label: "Tất cả thời gian" },
+                  { value: "YEAR", label: "Theo năm" },
+                  { value: "QUARTER", label: "Theo quý" },
+                  { value: "MONTH", label: "Theo tháng" },
+                  { value: "RANGE", label: "Tự chọn khoảng" }
                 ]}
-                placeholder="Chọn năm..."
+                placeholder="Chọn kiểu lọc..."
               />
             </div>
-            <div className="flex-1 sm:w-36 sm:flex-initial">
-              <CustomSelect
-                value={filterMonth}
-                onChange={val => setFilterMonth(val)}
-                options={[
-                  { value: "ALL", label: "Tất cả các tháng" },
-                  ...Array.from({ length: 12 }, (_, i) => ({
+            
+            {filterType !== "ALL" && filterType !== "RANGE" && (
+              <div className="flex-1 sm:w-36 sm:flex-initial">
+                <CustomSelect
+                  value={selectedYear}
+                  onChange={val => setSelectedYear(val)}
+                  options={availableYears.map(y => ({ value: y, label: `Năm ${y}` }))}
+                  placeholder="Chọn năm..."
+                />
+              </div>
+            )}
+
+            {filterType === "QUARTER" && (
+              <div className="flex-1 sm:w-40 sm:flex-initial">
+                <CustomSelect
+                  value={selectedQuarter}
+                  onChange={val => setSelectedQuarter(val)}
+                  options={[
+                    { value: "1", label: "Quý 1 (T1-T3)" },
+                    { value: "2", label: "Quý 2 (T4-T6)" },
+                    { value: "3", label: "Quý 3 (T7-T9)" },
+                    { value: "4", label: "Quý 4 (T10-T12)" }
+                  ]}
+                  placeholder="Chọn quý..."
+                />
+              </div>
+            )}
+
+            {filterType === "MONTH" && (
+              <div className="flex-1 sm:w-36 sm:flex-initial">
+                <CustomSelect
+                  value={selectedMonth}
+                  onChange={val => setSelectedMonth(val)}
+                  options={Array.from({ length: 12 }, (_, i) => ({
                     value: (i + 1).toString(),
                     label: `Tháng ${i + 1}`
-                  }))
-                ]}
-                placeholder="Chọn tháng..."
-              />
-            </div>
+                  }))}
+                  placeholder="Chọn tháng..."
+                />
+              </div>
+            )}
+
+            {filterType === "RANGE" && (
+              <div className="w-full sm:w-64">
+                <CustomDateRangePicker
+                  value={selectedRange}
+                  onChange={val => setSelectedRange(val)}
+                  placeholder="Chọn khoảng ngày..."
+                />
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
