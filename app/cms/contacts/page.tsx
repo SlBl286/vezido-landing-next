@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import {
   Phone, Mail, MessageSquare, CheckCircle2, Clock, XCircle,
   RefreshCw, Trash2, ChevronDown, User
@@ -28,6 +29,18 @@ export default function ContactsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(submissions.length / itemsPerPage);
+  const paginatedSubmissions = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return submissions.slice(startIdx, startIdx + itemsPerPage);
+  }, [submissions, currentPage]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -123,8 +136,9 @@ export default function ContactsPage() {
           <p className="font-black text-gray-400">Chưa có liên hệ nào</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {submissions.map((sub) => {
+        <>
+          <div className="space-y-4">
+          {paginatedSubmissions.map((sub) => {
             const statusInfo = STATUS_LABELS[sub.status] || STATUS_LABELS["NEW"];
             const isExpanded = expandedId === sub.id;
             return (
@@ -235,6 +249,12 @@ export default function ContactsPage() {
             );
           })}
         </div>
+        <CustomPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+        </>
       )}
     </div>
   );

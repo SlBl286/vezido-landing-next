@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import { cmsApi } from "@/lib/api-client";
 import { AuthSession } from "@/lib/types/api";
 import { createPortal } from "react-dom";
@@ -55,9 +56,33 @@ export default function FaqsPage() {
   // Filtering & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
 
   // Copy Feedback state
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Filter FAQs based on search and category
+  const filteredFaqs = faqs.filter(faq => {
+    const matchesSearch = 
+      faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      faq.answer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      faq.category.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCategory = selectedCategory === "Tất cả" || faq.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredFaqs.length / itemsPerPage);
+  const paginatedFaqs = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return filteredFaqs.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredFaqs, currentPage]);
 
   // Modals state
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -291,17 +316,7 @@ export default function FaqsPage() {
   if (!user) return null;
   const isAdmin = user.role === "ADMIN";
 
-  // Filter FAQs based on search and category
-  const filteredFaqs = faqs.filter(faq => {
-    const matchesSearch = 
-      faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      faq.answer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      faq.category.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === "Tất cả" || faq.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
-  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -396,8 +411,9 @@ export default function FaqsPage() {
           <p className="text-gray-400 text-sm mt-1">Vui lòng thử tìm kiếm với từ khóa khác hoặc lọc danh mục khác.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          {filteredFaqs.map((faq) => {
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          {paginatedFaqs.map((faq) => {
             const isCopied = copiedId === faq.id;
             return (
               <div 
@@ -499,6 +515,12 @@ export default function FaqsPage() {
             );
           })}
         </div>
+        <CustomPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+        </>
       )}
 
       {/* MODAL: ADD NEW FAQ */}

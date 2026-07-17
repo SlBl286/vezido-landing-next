@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import { cmsApi } from "@/lib/api-client";
 import { AuthSession } from "@/lib/types/api";
 import { createPortal } from "react-dom";
@@ -42,6 +43,11 @@ export default function CMSArtworksPage() {
   const [loadingArtworks, setLoadingArtworks] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClassFilter, setSelectedClassFilter] = useState("Tất cả");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedClassFilter]);
 
   // Form states
   const [formTitle, setFormTitle] = useState("");
@@ -61,6 +67,27 @@ export default function CMSArtworksPage() {
 
   // Lightbox
   const [activeZoomUrl, setActiveZoomUrl] = useState<string | null>(null);
+
+  // Filter artworks
+  const uniqueClassNames = Array.from(new Set(artworks.map(a => a.className).filter(Boolean)));
+
+  const filteredArtworks = artworks.filter(art => {
+    const matchesSearch = 
+      (art.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
+      (art.comment?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      art.studentCode.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesClass = selectedClassFilter === "Tất cả" || art.className === selectedClassFilter;
+
+    return matchesSearch && matchesClass;
+  });
+
+  const itemsPerPage = 12; // Grid view fits nicely with 12 items (3 columns)
+  const totalPages = Math.ceil(filteredArtworks.length / itemsPerPage);
+  const paginatedArtworks = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return filteredArtworks.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredArtworks, currentPage]);
 
   // Notification Modal State
   const [notification, setNotification] = useState<{
@@ -296,19 +323,7 @@ export default function CMSArtworksPage() {
     );
   }
 
-  // Filter artworks
-  const uniqueClassNames = Array.from(new Set(artworks.map(a => a.className).filter(Boolean)));
 
-  const filteredArtworks = artworks.filter(art => {
-    const matchesSearch = 
-      (art.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
-      (art.comment?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-      art.studentCode.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesClass = selectedClassFilter === "Tất cả" || art.className === selectedClassFilter;
-
-    return matchesSearch && matchesClass;
-  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -491,8 +506,9 @@ export default function CMSArtworksPage() {
           ) : filteredArtworks.length === 0 ? (
             <p className="text-sm text-gray-400 font-bold italic py-10 text-center">Chưa có tranh vẽ nào được đăng tải.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {filteredArtworks.map((art) => (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {paginatedArtworks.map((art) => (
                 <div 
                   key={art.id}
                   className="border-3 border-black bg-white rounded-lg p-3.5 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_rgba(0,0,0,1)] transition-all flex flex-col justify-between"
@@ -568,6 +584,12 @@ export default function CMSArtworksPage() {
                 </div>
               ))}
             </div>
+            <CustomPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+            </>
           )}
         </div>
       </div>

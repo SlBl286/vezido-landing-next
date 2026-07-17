@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import { Plus, Edit2, Trash2, Loader2, Search, AlertTriangle, TrendingUp, DollarSign, History, Box, List, ArrowDownCircle, ArrowUpCircle, ShoppingCart } from "lucide-react";
 import { AddSupplyModal } from "@/app/cms/components/modals/AddSupplyModal";
 import { ImportSupplyModal } from "@/app/cms/components/modals/ImportSupplyModal";
@@ -26,6 +27,28 @@ export default function SuppliesPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [lowStockFilter, setLowStockFilter] = useState(false);
+
+  const [currentSuppliesPage, setCurrentSuppliesPage] = useState(1);
+  const [currentTransactionsPage, setCurrentTransactionsPage] = useState(1);
+
+  // Reset page numbers on filters change
+  useEffect(() => {
+    setCurrentSuppliesPage(1);
+  }, [search, categoryFilter, lowStockFilter]);
+
+  const itemsPerPage = 10;
+  
+  const totalSuppliesPages = Math.ceil(supplies.length / itemsPerPage);
+  const paginatedSupplies = useMemo(() => {
+    const startIdx = (currentSuppliesPage - 1) * itemsPerPage;
+    return supplies.slice(startIdx, startIdx + itemsPerPage);
+  }, [supplies, currentSuppliesPage]);
+
+  const totalTransactionsPages = Math.ceil(transactions.length / itemsPerPage);
+  const paginatedTransactions = useMemo(() => {
+    const startIdx = (currentTransactionsPage - 1) * itemsPerPage;
+    return transactions.slice(startIdx, startIdx + itemsPerPage);
+  }, [transactions, currentTransactionsPage]);
 
   // Modals visibility
   const [showAddModal, setShowAddModal] = useState(false);
@@ -449,7 +472,7 @@ export default function SuppliesPage() {
                       </td>
                     </tr>
                   ) : (
-                    supplies.map((item) => (
+                    paginatedSupplies.map((item) => (
                       <tr key={item.id} className="hover:bg-amber-50/10 transition-colors">
                         <td className="p-4 font-bold text-black">{item.name}</td>
                         <td className="p-4">
@@ -514,6 +537,12 @@ export default function SuppliesPage() {
                 </tbody>
               </table>
             </div>
+            <CustomPagination
+              currentPage={currentSuppliesPage}
+              totalPages={totalSuppliesPages}
+              onPageChange={setCurrentSuppliesPage}
+              className="p-4 border-t border-black bg-stone-50"
+            />
           </div>
         </div>
       )}
@@ -544,7 +573,7 @@ export default function SuppliesPage() {
                     </td>
                   </tr>
                 ) : (
-                  transactions.map((tx) => (
+                  paginatedTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-amber-50/10 transition-colors">
                       <td className="p-4 font-medium text-black">
                         {new Date(tx.date).toLocaleString("vi-VN")}
@@ -601,6 +630,11 @@ export default function SuppliesPage() {
               </tbody>
             </table>
           </div>
+          <CustomPagination
+            currentPage={currentTransactionsPage}
+            totalPages={totalTransactionsPages}
+            onPageChange={setCurrentTransactionsPage}
+          />
         </div>
       )}
 

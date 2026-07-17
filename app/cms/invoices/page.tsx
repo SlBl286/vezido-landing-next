@@ -7,6 +7,7 @@ import { NotificationModal } from "@/app/cms/components/modals/NotificationModal
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
 import { CustomDateRangePicker } from "@/app/cms/components/ui/custom-daterange-picker";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import * as XLSX from "xlsx-js-style";
 
 export default function CMSInvoicesPage() {
@@ -37,6 +38,14 @@ export default function CMSInvoicesPage() {
     start: null,
     end: null,
   });
+
+  const [currentInvoicesPage, setCurrentInvoicesPage] = useState(1);
+  const [currentExpensesPage, setCurrentExpensesPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentInvoicesPage(1);
+    setCurrentExpensesPage(1);
+  }, [searchQuery, filterType, selectedYear, selectedQuarter, selectedMonth, selectedRange]);
 
   // Expense categories states
   const [categories, setCategories] = useState<any[]>([]);
@@ -1648,6 +1657,20 @@ export default function CMSInvoicesPage() {
     );
   });
 
+  const itemsPerPage = 10;
+  
+  const totalInvoicesPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const paginatedInvoices = useMemo(() => {
+    const startIdx = (currentInvoicesPage - 1) * itemsPerPage;
+    return filteredInvoices.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredInvoices, currentInvoicesPage]);
+
+  const totalExpensesPages = Math.ceil(filteredExpenses.length / itemsPerPage);
+  const paginatedExpenses = useMemo(() => {
+    const startIdx = (currentExpensesPage - 1) * itemsPerPage;
+    return filteredExpenses.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredExpenses, currentExpensesPage]);
+
   // Scale value for monthly profit chart based on filtered data
   const maxVal = filteredStats.months.reduce((max: number, m: any) => Math.max(max, m.revenue, m.expense), 0) || 1;
 
@@ -1991,7 +2014,7 @@ export default function CMSInvoicesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredInvoices.map((invoice) => (
+                  {paginatedInvoices.map((invoice) => (
                     <tr key={invoice.id} className="border-b-2 border-gray-200 hover:bg-[#fff9ed] transition-colors">
                       <td className="py-4 px-4">
                         <div className="flex flex-col">
@@ -2070,6 +2093,11 @@ export default function CMSInvoicesPage() {
                   ))}
                 </tbody>
               </table>
+              <CustomPagination
+                currentPage={currentInvoicesPage}
+                totalPages={totalInvoicesPages}
+                onPageChange={setCurrentInvoicesPage}
+              />
             </div>
           )}
         </div>
@@ -2131,7 +2159,7 @@ export default function CMSInvoicesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredExpenses.map((exp) => {
+                  {paginatedExpenses.map((exp) => {
                     const isReadOnly = exp.isReadOnly;
                     const catColors: Record<string, string> = {
                       "Mặt bằng": "bg-amber-100 text-amber-800 border-amber-300",
@@ -2243,6 +2271,11 @@ export default function CMSInvoicesPage() {
                   })}
                 </tbody>
               </table>
+              <CustomPagination
+                currentPage={currentExpensesPage}
+                totalPages={totalExpensesPages}
+                onPageChange={setCurrentExpensesPage}
+              />
             </div>
           )}
         </div>

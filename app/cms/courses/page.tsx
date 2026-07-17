@@ -6,6 +6,7 @@ import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
 import { NotificationModal } from "@/app/cms/components/modals/NotificationModal";
 import { cmsApi } from "@/lib/api-client";
+import { CustomPagination } from "../components/ui/custom-pagination";
 
 export default function CoursesManagerPage() {
   const [courses, setCourses] = useState<any[]>([]);
@@ -23,6 +24,11 @@ export default function CoursesManagerPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategoryId, setFilterCategoryId] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCategoryId, filterStatus]);
 
   // Modal control states
   const [showAddEditModal, setShowAddEditModal] = useState(false);
@@ -84,6 +90,13 @@ export default function CoursesManagerPage() {
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [courses, searchTerm, filterCategoryId, filterStatus]);
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+  const paginatedCourses = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return filteredCourses.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredCourses, currentPage]);
 
   // Notification State
   const [notification, setNotification] = useState<{
@@ -407,7 +420,7 @@ export default function CoursesManagerPage() {
             <p className="text-gray-400 text-sm mt-1">Vui lòng thử lại với bộ lọc hoặc từ khóa tìm kiếm khác.</p>
           </div>
         ) : (
-          filteredCourses.map(course => (
+          paginatedCourses.map(course => (
             <div
               key={course.id}
               className={`border-4 border-black bg-white rounded-[30px_10px_25px_10px/10px_25px_10px_30px] p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between transition-all ${
@@ -513,6 +526,11 @@ export default function CoursesManagerPage() {
           ))
         )}
       </div>
+      <CustomPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* MODAL: ADD / EDIT COURSE */}
       {showAddEditModal && (

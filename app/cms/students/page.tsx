@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import { cmsApi } from "@/lib/api-client";
 import { AuthSession } from "@/lib/types/api";
 import { 
@@ -31,6 +32,11 @@ export default function StudentsPage() {
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState<"all" | "unpaid" | "paid">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, paymentFilter]);
   
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<Student | null>(null);
@@ -64,6 +70,36 @@ export default function StudentsPage() {
       onConfirm,
     });
   };
+
+  // Filter students based on search query and payment filter
+  const filteredStudents = students.filter((s) => {
+    const term = searchQuery.toLowerCase();
+    const matchesSearch = (
+      s.studentName.toLowerCase().includes(term) ||
+      (s.studentCode && s.studentCode.toLowerCase().includes(term)) ||
+      (s.parentPhone && s.parentPhone.includes(term)) ||
+      (s.parentName && s.parentName.toLowerCase().includes(term))
+    );
+
+    if (!matchesSearch) return false;
+
+    if (paymentFilter === "unpaid") {
+      // Check if at least one enrollment is unpaid
+      return s.enrollments?.some((e: any) => !e.isPaid);
+    } else if (paymentFilter === "paid") {
+      // Check if all enrollments are paid
+      return s.enrollments?.every((e: any) => e.isPaid);
+    }
+
+    return true;
+  });
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const paginatedStudents = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return filteredStudents.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredStudents, currentPage]);
 
   // Fetch session on load
   useEffect(() => {
@@ -145,28 +181,7 @@ export default function StudentsPage() {
     );
   }
 
-  // Filter students based on search query and payment filter
-  const filteredStudents = students.filter((s) => {
-    const term = searchQuery.toLowerCase();
-    const matchesSearch = (
-      s.studentName.toLowerCase().includes(term) ||
-      (s.studentCode && s.studentCode.toLowerCase().includes(term)) ||
-      (s.parentPhone && s.parentPhone.includes(term)) ||
-      (s.parentName && s.parentName.toLowerCase().includes(term))
-    );
 
-    if (!matchesSearch) return false;
-
-    if (paymentFilter === "unpaid") {
-      // Check if at least one enrollment is unpaid
-      return s.enrollments?.some((e: any) => !e.isPaid);
-    } else if (paymentFilter === "paid") {
-      // Check if all enrollments are paid
-      return s.enrollments?.every((e: any) => e.isPaid);
-    }
-
-    return true;
-  });
 
   return (
     <div className="border-4 border-black bg-white rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-in fade-in duration-200">
@@ -260,7 +275,7 @@ export default function StudentsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.map((student) => {
+              {paginatedStudents.map((student) => {
                 const enrollmentsCount = student.enrollments?.length || 0;
                 const hasUnpaid = enrollmentsCount > 0 && student.enrollments?.some((e: any) => !e.isPaid);
                 const unpaidCount = student.enrollments?.filter((e: any) => !e.isPaid).length || 0;
@@ -354,6 +369,11 @@ export default function StudentsPage() {
               })}
             </tbody>
           </table>
+          <CustomPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
 

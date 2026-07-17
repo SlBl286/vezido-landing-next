@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import { Plus, Edit2, Trash2, Loader2, X, AlertTriangle, Calendar, Ticket } from "lucide-react";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { CustomCheckbox } from "@/app/cms/components/ui/custom-checkbox";
@@ -10,6 +11,18 @@ import { cmsApi } from "@/lib/api-client";
 export default function PromotionsManagerPage() {
   const [promotions, setPromotions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [promotions.length]);
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(promotions.length / itemsPerPage);
+  const paginatedPromotions = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return promotions.slice(startIdx, startIdx + itemsPerPage);
+  }, [promotions, currentPage]);
   const [session, setSession] = useState<any>(null);
 
   // Modal control states
@@ -261,7 +274,7 @@ export default function PromotionsManagerPage() {
                 </tr>
               </thead>
               <tbody>
-                {promotions.map((promo) => {
+                {paginatedPromotions.map((promo) => {
                   const now = new Date();
                   const isExpired = promo.endDate && now > new Date(promo.endDate);
                   const isNotStarted = promo.startDate && now < new Date(promo.startDate);
@@ -362,6 +375,11 @@ export default function PromotionsManagerPage() {
                 })}
               </tbody>
             </table>
+            <CustomPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

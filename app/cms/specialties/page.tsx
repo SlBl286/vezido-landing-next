@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import { cmsApi } from "@/lib/api-client";
 import { AuthSession } from "@/lib/types/api";
 import { Plus, Trash2, BookOpen, Users, X, Loader2, Award, Edit } from "lucide-react";
@@ -22,6 +23,18 @@ export default function SpecialtiesPage() {
   // Specialties list
   const [specialties, setSpecialties] = useState<SpecialtyWithCounts[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [specialties.length]);
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(specialties.length / itemsPerPage);
+  const paginatedSpecialties = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return specialties.slice(startIdx, startIdx + itemsPerPage);
+  }, [specialties, currentPage]);
 
   // Modals & form state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -204,8 +217,9 @@ export default function SpecialtiesPage() {
           <p className="text-gray-400 mt-2">Hãy nhấn nút "Thêm Chuyên môn" để bắt đầu.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {specialties.map((spec) => (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedSpecialties.map((spec) => (
             <div 
               key={spec.id} 
               className="border-4 border-black bg-white rounded-[25px_10px_20px_10px/10px_20px_10px_25px] p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between hover:scale-[1.02] transition-transform"
@@ -261,6 +275,12 @@ export default function SpecialtiesPage() {
             </div>
           ))}
         </div>
+        <CustomPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+        </>
       )}
 
       {/* MODAL: ADD SPECIALTY */}

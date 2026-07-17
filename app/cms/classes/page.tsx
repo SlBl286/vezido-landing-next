@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import { cmsApi } from "@/lib/api-client";
 import { ClassWithTeachersAndCount, TeacherWithUserAndClasses, AuthSession } from "@/lib/types/api";
 import { Specialty } from "@/lib/generated/prisma/client";
@@ -22,6 +23,18 @@ export default function ClassesPage() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [classes.length]);
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(classes.length / itemsPerPage);
+  const paginatedClasses = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return classes.slice(startIdx, startIdx + itemsPerPage);
+  }, [classes, currentPage]);
 
   // Modals & selected state
   const [showAddClassModal, setShowAddClassModal] = useState(false);
@@ -189,7 +202,7 @@ export default function ClassesPage() {
               </tr>
             </thead>
             <tbody>
-              {classes.map((cls) => (
+              {paginatedClasses.map((cls) => (
                 <tr key={cls.id} className="border-b-2 border-gray-200 hover:bg-[#fff9ed] transition-colors">
                   <td className="py-4 px-4 font-bold text-gray-950">
                     <div className="flex flex-col">
@@ -290,6 +303,11 @@ export default function ClassesPage() {
               ))}
             </tbody>
           </table>
+          <CustomPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
 

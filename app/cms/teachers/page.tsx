@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { CustomPagination } from "../components/ui/custom-pagination";
 import { CustomSelect } from "@/app/cms/components/ui/custom-select";
 import { cmsApi } from "@/lib/api-client";
 import { TeacherWithUserAndClasses, AuthSession } from "@/lib/types/api";
@@ -150,6 +151,19 @@ export default function TeachersPage() {
       setLoadingData(false);
     }
   };
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [teachers.length]);
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(teachers.length / itemsPerPage);
+  const paginatedTeachers = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return teachers.slice(startIdx, startIdx + itemsPerPage);
+  }, [teachers, currentPage]);
 
   useEffect(() => {
     if (!loadingSession && session && session.user?.role === "ADMIN") {
@@ -360,7 +374,7 @@ export default function TeachersPage() {
               </tr>
             </thead>
             <tbody>
-              {teachers.map((teacher) => (
+              {paginatedTeachers.map((teacher) => (
                 <tr key={teacher.id} className="border-b-2 border-gray-200 hover:bg-[#fff9ed] transition-colors">
                   <td className="py-4 px-4 font-bold text-gray-950 flex items-center gap-3">
                     {teacher.user.image ? (
@@ -473,6 +487,11 @@ export default function TeachersPage() {
               ))}
             </tbody>
           </table>
+          <CustomPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
 
